@@ -29,10 +29,4 @@ derives `getStaticPaths` from fixture contexts, producing deterministic home,
 content, and not-found output. This is a local SDK proof, not a decision about
 the later Workers-for-Platforms production runtime.
 
-## Releases
-
-The repository is currently in Changesets prerelease mode. `pnpm release`
-publishes public packages under the `alpha` dist-tag explicitly; remove that
-override when the repository exits prerelease mode for its first stable release.
-
 Licensed under Apache-2.0.
