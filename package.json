@@ -17,7 +17,7 @@
     "verify:example": "node scripts/verify-example.mjs",
     "changeset": "changeset",
     "version-packages": "changeset version",
-    "release": "pnpm verify && changeset publish"
+    "release": "pnpm verify && changeset publish --tag alpha"
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.10",
