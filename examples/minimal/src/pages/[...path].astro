@@ -1,0 +1,51 @@
+---
+import { theme } from "virtual:voyant-theme";
+
+export function getStaticPaths() {
+  const contexts = [
+    theme.fixtures.home,
+    ...theme.fixtures.content,
+    theme.fixtures.notFound,
+  ];
+  return contexts.map((context) => ({
+    params: {
+      path: context.path === "/" ? undefined : context.path.replace(/^\//, ""),
+    },
+    props: { context },
+  }));
+}
+
+const { context } = Astro.props;
+if (context.kind === "notFound") Astro.response.status = 404;
+---
+
+<!doctype html>
+<html lang={context.locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>{context.title} · {context.site.name}</title>
+  </head>
+  <body>
+    <header>
+      <a href="/">{context.site.name}</a>
+      <nav>{context.navigation.map((item) => <a href={item.href}>{item.label}</a>)}</nav>
+    </header>
+    <main>
+      <p>{context.kind}</p>
+      <h1>{context.title}</h1>
+      {context.kind === "content" && <><p>{context.summary}</p><article>{context.body}</article></>}
+      {context.kind === "home" && context.sections.map((section) => <section data-type={section.type}>{String(section.data.eyebrow ?? "")}</section>)}
+      {context.kind === "notFound" && <p>{context.message}</p>}
+    </main>
+  </body>
+</html>
+
+<style>
+  :global(*) { box-sizing: border-box; }
+  :global(body) { max-width: 70rem; margin: auto; padding: 2rem; font: 1rem/1.6 system-ui; color: #16343b; }
+  header { display: flex; justify-content: space-between; gap: 2rem; }
+  nav { display: flex; gap: 1rem; }
+  main { padding-block: 12vh; }
+  h1 { max-width: 14ch; font-size: clamp(2.5rem, 8vw, 6rem); line-height: .95; }
+</style>

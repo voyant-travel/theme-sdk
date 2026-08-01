@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.voyant.travel/theme/v1alpha1/theme-context.schema.json",
+  "title": "Voyant page context v1alpha1",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["kind", "path", "locale", "site", "title", "sections"],
+      "properties": { "kind": { "const": "home" }, "path": { "const": "/" } }
+    },
+    {
+      "type": "object",
+      "required": ["kind", "path", "locale", "site", "slug", "title", "body"],
+      "properties": { "kind": { "const": "content" } }
+    },
+    {
+      "type": "object",
+      "required": ["kind", "path", "locale", "site", "title"],
+      "properties": { "kind": { "const": "notFound" } }
+    }
+  ]
+}

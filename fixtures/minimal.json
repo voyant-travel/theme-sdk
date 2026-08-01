@@ -1,0 +1,38 @@
+{
+  "home": {
+    "kind": "home",
+    "path": "/",
+    "locale": "en",
+    "site": { "name": "Northstar Travel" },
+    "navigation": [{ "label": "Journal", "href": "/journal/hello-world" }],
+    "settings": { "accent": "ocean" },
+    "title": "Go somewhere worth remembering",
+    "sections": [
+      { "type": "hero", "data": { "eyebrow": "Made for curious travellers" } }
+    ]
+  },
+  "content": [
+    {
+      "kind": "content",
+      "path": "/journal/hello-world",
+      "slug": "hello-world",
+      "locale": "en",
+      "site": { "name": "Northstar Travel" },
+      "navigation": [{ "label": "Home", "href": "/" }],
+      "settings": { "accent": "ocean" },
+      "title": "Hello, world",
+      "summary": "A fixture-backed content page.",
+      "body": "This page proves the content context without a network dependency."
+    }
+  ],
+  "notFound": {
+    "kind": "notFound",
+    "path": "/404",
+    "locale": "en",
+    "site": { "name": "Northstar Travel" },
+    "navigation": [{ "label": "Home", "href": "/" }],
+    "settings": { "accent": "ocean" },
+    "title": "That trip is not on the map",
+    "message": "Try returning home."
+  }
+}

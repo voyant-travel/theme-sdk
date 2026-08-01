@@ -1,0 +1,56 @@
+{
+  "name": "@voyant-travel/astro",
+  "version": "0.0.0",
+  "description": "Astro integration and fixture runtime for Voyant themes.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./runtime": "./src/runtime.ts",
+    "./virtual": "./src/virtual.d.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && cp src/virtual.d.ts dist/virtual.d.ts",
+    "check-types": "tsc --noEmit",
+    "test": "vitest run",
+    "prepack": "pnpm build"
+  },
+  "dependencies": {
+    "@voyant-travel/theme": "workspace:^"
+  },
+  "peerDependencies": {
+    "astro": ">=5.0.0"
+  },
+  "devDependencies": {
+    "astro": "^5.15.3",
+    "typescript": "5.9.2",
+    "vitest": "^4.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      },
+      "./runtime": {
+        "types": "./dist/runtime.d.ts",
+        "import": "./dist/runtime.js",
+        "default": "./dist/runtime.js"
+      },
+      "./virtual": {
+        "types": "./dist/virtual.d.ts"
+      }
+    }
+  }
+}
