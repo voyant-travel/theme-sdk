@@ -3,6 +3,11 @@
   "version": "0.1.0-alpha.1",
   "description": "Astro integration and fixture runtime for Voyant themes.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/voyant-travel/theme-sdk.git",
+    "directory": "packages/astro"
+  },
   "type": "module",
   "sideEffects": false,
   "files": [
