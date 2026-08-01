@@ -13,6 +13,30 @@ describe("checkThemeDefinition", () => {
     expect(checkThemeDefinition(theme).diagnostics).toEqual([]);
   });
 
+  it("requires at least one content route while allowing multiple", () => {
+    const withoutContent = validTheme();
+    withoutContent.manifest.routes = withoutContent.manifest.routes.filter(
+      (route) => route.context !== "content",
+    );
+    expect(checkThemeDefinition(withoutContent).diagnostics).toEqual([
+      expect.objectContaining({
+        code: "THEME_ROUTE_REQUIRED",
+        message: "At least one content route is required.",
+        source: { file: "theme.config.ts", path: ["manifest", "routes"] },
+      }),
+    ]);
+
+    const withMultipleContentRoutes = validTheme();
+    withMultipleContentRoutes.manifest.routes.push({
+      id: "guide",
+      pattern: "/guides/[guide]",
+      context: "content",
+    });
+    expect(checkThemeDefinition(withMultipleContentRoutes).diagnostics).toEqual(
+      [],
+    );
+  });
+
   it("returns sorted diagnostics with stable codes and paths", () => {
     const theme = validTheme();
     theme.manifest.routes = [

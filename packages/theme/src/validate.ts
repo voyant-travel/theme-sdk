@@ -42,7 +42,7 @@ function duplicateDiagnostics(
 
 export function checkThemeDefinition(
   input: unknown,
-  sourceFile = "voyant.theme.ts",
+  sourceFile = "theme.config.ts",
 ): ThemeValidationResult {
   const parsed = themeDefinitionSchema.safeParse(input);
   if (!parsed.success) {
@@ -86,6 +86,17 @@ export function checkThemeDefinition(
         source: { file: sourceFile, path: ["manifest", "routes"] },
       });
     }
+  }
+
+  if (!manifest.routes.some((route) => route.context === "content")) {
+    diagnostics.push({
+      code: "THEME_ROUTE_REQUIRED",
+      message: "At least one content route is required.",
+      severity: "error",
+      path: "$.manifest.routes",
+      hint: "Declare a route with context 'content'. Multiple content routes are allowed.",
+      source: { file: sourceFile, path: ["manifest", "routes"] },
+    });
   }
 
   const patterns = new Map<string, number>();

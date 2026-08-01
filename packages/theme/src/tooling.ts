@@ -83,6 +83,7 @@ export interface DevelopThemeOptions extends RunnableThemeOptions {
 
 export interface ThemeDevHandle {
   url: string;
+  wait(): Promise<number>;
   close(): Promise<void>;
 }
 
@@ -225,6 +226,19 @@ function waitForExit(child: ChildProcess): Promise<number> {
   return new Promise((resolve, reject) => {
     child.once("error", reject);
     child.once("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0)));
+  });
+}
+
+function observeDevCompletion(child: ChildProcess): Promise<number> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const complete = (exitCode: number) => {
+      if (settled) return;
+      settled = true;
+      resolve(exitCode);
+    };
+    child.once("error", () => complete(1));
+    child.once("exit", (code, signal) => complete(code ?? (signal ? 1 : 0)));
   });
 }
 
@@ -401,11 +415,14 @@ export async function developTheme(
   const child = (options.runner ?? defaultRunner)(
     invocation(command, path.resolve(options.projectRoot), options.signal),
   );
-  const completed = waitForExit(child);
+  const completed = observeDevCompletion(child);
   let closing: Promise<void> | undefined;
 
   return {
     url: `http://${host}:${port}`,
+    wait() {
+      return completed;
+    },
     close() {
       if (closing) return closing;
       closing = (async () => {
