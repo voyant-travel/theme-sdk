@@ -1,5 +1,13 @@
 # @voyant-travel/astro
 
+## 0.1.0-alpha.1
+
+### Patch Changes
+
+- 0618c04: Run the project-installed Astro CLI directly so theme builds and development do not require a globally available package manager binary.
+- Updated dependencies [0618c04]
+  - @voyant-travel/theme@0.1.0-alpha.1
+
 ## 0.1.0-alpha.0
 
 ### Minor Changes
