@@ -1,6 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { createJiti } from "jiti";
 import type { ParsedThemeDefinition } from "./contract.js";
@@ -222,6 +223,30 @@ function invocation(
   return { command: executable, args, cwd, signal, output };
 }
 
+async function localAstroCommand(
+  projectRoot: string,
+  subcommand: "build" | "dev",
+): Promise<string[]> {
+  const root = path.resolve(projectRoot);
+  const require = createRequire(path.join(root, "package.json"));
+  const packagePath = require.resolve("astro/package.json");
+  const manifest = JSON.parse(await readFile(packagePath, "utf8")) as {
+    bin?: string | Record<string, string>;
+  };
+  const relativeBin =
+    typeof manifest.bin === "string" ? manifest.bin : manifest.bin?.astro;
+  if (!relativeBin) {
+    throw new Error(
+      "The project-installed Astro package does not expose its CLI binary.",
+    );
+  }
+  return [
+    process.execPath,
+    path.resolve(path.dirname(packagePath), relativeBin),
+    subcommand,
+  ];
+}
+
 function waitForExit(child: ChildProcess): Promise<number> {
   return new Promise((resolve, reject) => {
     child.once("error", reject);
@@ -320,13 +345,10 @@ export async function buildTheme(
   )
     return report(project);
 
-  const command = project.theme.tooling?.build ?? [
-    "pnpm",
-    "exec",
-    "astro",
-    "build",
-  ];
   try {
+    const command =
+      project.theme.tooling?.build ??
+      (await localAstroCommand(options.projectRoot, "build"));
     const child = (options.runner ?? defaultRunner)(
       invocation(
         command,
@@ -410,7 +432,9 @@ export async function developTheme(
 
   const host = options.host ?? "localhost";
   const port = options.port ?? 4321;
-  const base = project.theme.tooling?.dev ?? ["pnpm", "exec", "astro", "dev"];
+  const base =
+    project.theme.tooling?.dev ??
+    (await localAstroCommand(options.projectRoot, "dev"));
   const command = [...base, "--host", host, "--port", String(port)];
   const child = (options.runner ?? defaultRunner)(
     invocation(command, path.resolve(options.projectRoot), options.signal),
