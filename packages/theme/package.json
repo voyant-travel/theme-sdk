@@ -3,6 +3,11 @@
   "version": "0.1.0-alpha.1",
   "description": "The public contract and local tooling for Voyant storefront themes.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/voyant-travel/theme-sdk.git",
+    "directory": "packages/theme"
+  },
   "type": "module",
   "sideEffects": false,
   "files": [
