@@ -1,0 +1,18 @@
+{
+  "name": "@voyant-travel/example-theme",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "astro build",
+    "check-types": "astro check",
+    "dev": "astro dev"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@voyant-travel/astro": "workspace:*",
+    "@voyant-travel/theme": "workspace:*",
+    "astro": "^5.15.3",
+    "typescript": "5.9.2"
+  }
+}
