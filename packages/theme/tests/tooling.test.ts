@@ -1,11 +1,11 @@
 import type { ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { TOOLING_SCHEMA_VERSION } from "../src/index.js";
-import { developTheme, validateTheme } from "../src/tooling.js";
+import { buildTheme, developTheme, validateTheme } from "../src/tooling.js";
 import { validTheme } from "./helpers.js";
 
 describe("validateTheme", () => {
@@ -67,6 +67,52 @@ function childProcessDouble(): ChildProcess & {
   };
 }
 
+async function installFakeAstro(root: string): Promise<string> {
+  const directory = path.join(root, "node_modules", "astro");
+  await mkdir(directory, { recursive: true });
+  await writeFile(
+    path.join(directory, "package.json"),
+    JSON.stringify({
+      name: "astro",
+      version: "0.0.0-test",
+      bin: { astro: "astro.js" },
+    }),
+  );
+  const entry = path.join(directory, "astro.js");
+  await writeFile(entry, "");
+  return entry;
+}
+
+describe("buildTheme", () => {
+  it("runs the project-installed Astro CLI without requiring a package manager binary", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "voyant-theme-"));
+    await writeFile(
+      path.join(root, "theme.config.mjs"),
+      `export default ${JSON.stringify(validTheme())};`,
+    );
+    const astroEntry = await installFakeAstro(root);
+    const child = childProcessDouble();
+    let received: { command: string; args: string[]; cwd: string } | undefined;
+    const result = await buildTheme({
+      projectRoot: root,
+      runner: (command) => {
+        received = command;
+        setImmediate(() => child.emitExit(1));
+        return child;
+      },
+    });
+
+    expect(received).toMatchObject({
+      command: process.execPath,
+      args: [astroEntry, "build"],
+      cwd: root,
+    });
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "THEME_BUILD_FAILED" }),
+    );
+  });
+});
+
 describe("developTheme", () => {
   async function projectWithConfig(): Promise<string> {
     const root = await mkdtemp(path.join(tmpdir(), "voyant-theme-"));
@@ -74,6 +120,7 @@ describe("developTheme", () => {
       path.join(root, "theme.config.mjs"),
       `export default ${JSON.stringify(validTheme())};`,
     );
+    await installFakeAstro(root);
     return root;
   }
 
