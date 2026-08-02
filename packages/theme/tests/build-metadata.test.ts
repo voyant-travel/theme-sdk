@@ -63,6 +63,39 @@ describe("createThemeBuildMetadata", () => {
     ).toEqual(first);
   });
 
+  it("orders paths by code unit rather than locale collation", async () => {
+    const checked = checkThemeDefinition(validTheme());
+    const root = await mkdtemp(path.join(tmpdir(), "voyant-order-"));
+    if (!checked.theme) throw new Error("Test setup failed.");
+    await mkdir(path.join(root, "dist", "client"), { recursive: true });
+    // `.` is U+002E and `_` is U+005F, so a code-unit sort puts the dotfile
+    // first. Locale collation treats both as ignorable punctuation and orders
+    // them the other way round, which downstream verification rejects because
+    // it compares paths relationally.
+    for (const name of ["_headers", ".assetsignore", "app.css"])
+      await writeFile(path.join(root, "dist/client", name), name);
+
+    const metadata = await createThemeBuildMetadata({
+      projectRoot: root,
+      outputDirectory: "dist",
+      theme: checked.theme,
+    });
+
+    const paths = metadata.files.map((file) => file.path);
+    expect(paths).toEqual([
+      "client/.assetsignore",
+      "client/_headers",
+      "client/app.css",
+    ]);
+    expect(paths).toEqual([...paths].sort());
+    expect(
+      paths.some((value, index) => {
+        const previous = paths[index - 1];
+        return previous !== undefined && previous > value;
+      }),
+    ).toBe(false);
+  });
+
   it("records a validated Cloudflare server runtime in the artifact digest", async () => {
     const checked = checkThemeDefinition(validTheme());
     const root = await mkdtemp(path.join(tmpdir(), "voyant-runtime-"));

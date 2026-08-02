@@ -391,6 +391,21 @@ function observeDevCompletion(child: ChildProcess): Promise<number> {
   });
 }
 
+/**
+ * Orders paths by code unit rather than collation.
+ *
+ * `localeCompare` reorders punctuation and depends on the host locale, so the
+ * same output directory can serialize differently on two machines — and
+ * `client/_headers` sorts before `client/.assetsignore` even though `.` (U+002E)
+ * precedes `_` (U+005F). Build metadata is provenance for a reproducible build
+ * and is verified downstream with a plain relational comparison, so the only
+ * safe ordering here is the code-unit one.
+ */
+function compareBuildPaths(left: string, right: string): number {
+  if (left < right) return -1;
+  return left > right ? 1 : 0;
+}
+
 async function collectBuildFiles(
   root: string,
   directory = root,
@@ -398,7 +413,7 @@ async function collectBuildFiles(
   const entries = await readdir(directory, { withFileTypes: true });
   const files: ThemeBuildFile[] = [];
   for (const entry of entries.sort((left, right) =>
-    left.name.localeCompare(right.name),
+    compareBuildPaths(left.name, right.name),
   )) {
     const absolute = path.join(directory, entry.name);
     if (entry.isDirectory())
@@ -412,7 +427,7 @@ async function collectBuildFiles(
       });
     }
   }
-  return files.sort((left, right) => left.path.localeCompare(right.path));
+  return files.sort((left, right) => compareBuildPaths(left.path, right.path));
 }
 
 export async function createThemeBuildMetadata(options: {
