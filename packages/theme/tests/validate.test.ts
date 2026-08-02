@@ -1,8 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { checkThemeDefinition } from "../src/index.js";
+import { checkThemeDefinition, localeSchema } from "../src/index.js";
 import { validTheme } from "./helpers.js";
 
 describe("checkThemeDefinition", () => {
+  it("requires canonical BCP-47 locale tags", () => {
+    expect(localeSchema.safeParse("en").success).toBe(true);
+    expect(localeSchema.safeParse("en-US").success).toBe(true);
+    expect(localeSchema.safeParse("zh-Hant-TW").success).toBe(true);
+    expect(localeSchema.safeParse("en_us").success).toBe(false);
+    expect(localeSchema.safeParse("en-us").success).toBe(false);
+    expect(localeSchema.safeParse("not a locale").success).toBe(false);
+  });
+
   it.each([
     "/stories/[entry]",
     "/stories/[slug]",

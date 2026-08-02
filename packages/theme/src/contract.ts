@@ -2,6 +2,21 @@ import { z } from "zod";
 
 export const CONTRACT_VERSION = "v1alpha1" as const;
 
+export const localeSchema = z
+  .string()
+  .min(2)
+  .refine(
+    (value) => {
+      try {
+        const canonical = Intl.getCanonicalLocales(value);
+        return canonical.length === 1 && canonical[0] === value;
+      } catch {
+        return false;
+      }
+    },
+    { message: "Use a canonical BCP-47 locale tag." },
+  );
+
 const identifier = z
   .string()
   .min(1)
@@ -97,7 +112,7 @@ const siteSchema = z.strictObject({
 const navigationSchema = z.array(linkSchema);
 
 const contextBase = {
-  locale: z.string().min(2),
+  locale: localeSchema,
   site: siteSchema,
   navigation: navigationSchema.default([]),
   settings: z.record(z.string(), z.unknown()).default({}),

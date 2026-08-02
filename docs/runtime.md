@@ -44,7 +44,8 @@ normalized path and locale query are therefore preserved. No visitor cookies,
 authorization, or arbitrary request headers are forwarded.
 
 The public locale prefix is not part of a stored context path. After validating
-the response locale, the resolver maps `/{locale}` to `/` and
+the response locale against the trusted reader's
+`X-Voyant-Publication-Locale` header, the resolver maps `/{locale}` to `/` and
 `/{locale}/somewhere` to `/somewhere` for path and not-found-header checks. A
 public path without that exact locale prefix is compared unchanged.
 
@@ -62,12 +63,16 @@ objects under `contexts/{locale}/{path-key}.json`. The theme cannot choose an R2
 key or storage prefix.
 
 Successful reads return JSON shaped as
-`{ contractVersion: "v1alpha1", context: ThemePageContext }`. The resolver caps
-the buffered response at 2 MiB, validates the strict schema, and verifies that
-the context path equals the requested path.
+`{ contractVersion: "v1alpha1", context: ThemePageContext }` and include
+`X-Voyant-Publication-Locale: <canonical BCP-47 locale>`. Context locales must
+be canonical BCP-47 tags, such as `en`, `en-US`, or `zh-Hant-TW`. The resolver
+caps the buffered response at 2 MiB, validates the strict schema, requires the
+header to exactly equal `context.locale`, and only then verifies that the
+context path equals the requested path.
 
 For an unknown path, the reader may return a typed `notFound` envelope with HTTP
-404, `X-Voyant-Publication-Context-Path: /404`, and
+404, `X-Voyant-Publication-Locale`,
+`X-Voyant-Publication-Context-Path: /404`, and
 `X-Voyant-Requested-Path: <normalized path>`. The resolver accepts only that
 exact combination; the Astro page then sets its response status to 404. All
 other non-success responses and response/header/schema mismatches fail closed.

@@ -7,6 +7,7 @@ export {
   homeContextSchema,
   imageSchema,
   linkSchema,
+  localeSchema,
   type NotFoundContext,
   notFoundContextSchema,
   type ParsedThemeDefinition,

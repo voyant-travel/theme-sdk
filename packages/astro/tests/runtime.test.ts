@@ -60,6 +60,15 @@ function publishedContext(path = "/stories/north") {
   };
 }
 
+function publishedResponse(
+  body = publishedContext(),
+  locale = body.context.locale,
+) {
+  return Response.json(body, {
+    headers: { [PUBLICATION_RESPONSE_HEADERS.locale]: locale },
+  });
+}
+
 function bindings(
   fetch: VoyantPublicationBindings["PUBLICATION"]["fetch"],
 ): VoyantPublicationBindings {
@@ -90,7 +99,7 @@ describe("createThemeContextResolver", () => {
 
   it("loads a v1alpha1 context through the scoped publication Fetcher", async () => {
     const fetch = vi.fn(async (_input: RequestInfo | URL) =>
-      Response.json(publishedContext()),
+      publishedResponse(),
     );
     const resolve = createThemeContextResolver(theme);
 
@@ -128,7 +137,7 @@ describe("createThemeContextResolver", () => {
     await expect(
       resolve(
         "https://north.example/fr/stories/north?locale=fr",
-        bindings(async () => Response.json(localized)),
+        bindings(async () => publishedResponse(localized)),
       ),
     ).resolves.toMatchObject({
       locale: "fr",
@@ -151,9 +160,9 @@ describe("createThemeContextResolver", () => {
     ["reader error", new Response(null, { status: 503 })],
     [
       "future contract",
-      Response.json({ ...publishedContext(), contractVersion: "v2" }),
+      publishedResponse({ ...publishedContext(), contractVersion: "v2" }),
     ],
-    ["wrong path", Response.json(publishedContext("/stories/elsewhere"))],
+    ["wrong path", publishedResponse(publishedContext("/stories/elsewhere"))],
     ["malformed context", Response.json({ contractVersion: "v1alpha1" })],
   ])("fails closed for %s", async (_label, response) => {
     const resolve = createThemeContextResolver(theme);
@@ -164,6 +173,30 @@ describe("createThemeContextResolver", () => {
         bindings(async () => response.clone()),
       ),
     ).rejects.toBeInstanceOf(ThemeRuntimeError);
+  });
+
+  it.each([
+    ["missing", Response.json(publishedContext())],
+    ["mismatched", publishedResponse(publishedContext(), "fr")],
+    [
+      "malformed context locale",
+      publishedResponse(
+        {
+          ...publishedContext(),
+          context: { ...publishedContext().context, locale: "en_us" },
+        },
+        "en_us",
+      ),
+    ],
+  ])("rejects a %s publication locale", async (_label, response) => {
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(
+      resolve(
+        "https://north.example/stories/north?locale=en",
+        bindings(async () => response.clone()),
+      ),
+    ).rejects.toMatchObject({ code: "THEME_CONTEXT_RESPONSE_INVALID" });
   });
 
   it("accepts the reader's typed not-found fallback", async () => {
@@ -182,6 +215,7 @@ describe("createThemeContextResolver", () => {
     const response = Response.json(fallback, {
       headers: {
         [PUBLICATION_RESPONSE_HEADERS.contextPath]: "/404",
+        [PUBLICATION_RESPONSE_HEADERS.locale]: "en",
         [PUBLICATION_RESPONSE_HEADERS.requestedPath]: "/missing",
       },
       status: 404,
@@ -212,6 +246,7 @@ describe("createThemeContextResolver", () => {
     const response = Response.json(fallback, {
       headers: {
         [PUBLICATION_RESPONSE_HEADERS.contextPath]: "/404",
+        [PUBLICATION_RESPONSE_HEADERS.locale]: "fr",
         [PUBLICATION_RESPONSE_HEADERS.requestedPath]: "/missing",
       },
       status: 404,

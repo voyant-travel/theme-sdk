@@ -25,6 +25,7 @@ export const PUBLICATION_REQUEST_HEADERS = {
 
 export const PUBLICATION_RESPONSE_HEADERS = {
   contextPath: "x-voyant-publication-context-path",
+  locale: "x-voyant-publication-locale",
   requestedPath: "x-voyant-requested-path",
 } as const;
 
@@ -276,6 +277,15 @@ async function resolvePublishedContext(
     throw new ThemeRuntimeError(
       "THEME_CONTEXT_RESPONSE_INVALID",
       "Voyant publication context does not match the v1alpha1 contract.",
+    );
+  }
+  const publicationLocale = response.headers.get(
+    PUBLICATION_RESPONSE_HEADERS.locale,
+  );
+  if (publicationLocale !== parsed.data.context.locale) {
+    throw new ThemeRuntimeError(
+      "THEME_CONTEXT_RESPONSE_INVALID",
+      "Voyant publication context locale does not match the trusted reader locale.",
     );
   }
   const requestedPath = publicationContextPath(
