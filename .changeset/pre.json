@@ -9,6 +9,7 @@
   "changesets": [
     "brave-themes-build",
     "calm-sites-render",
-    "early-themes-arrive"
+    "early-themes-arrive",
+    "sorted-build-paths"
   ]
 }
