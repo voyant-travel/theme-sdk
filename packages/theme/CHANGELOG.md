@@ -1,5 +1,11 @@
 # @voyant-travel/theme
 
+## 0.1.0-alpha.2
+
+### Patch Changes
+
+- 4ac8356: Add the immutable Astro/Cloudflare server runtime seam for fixture-backed local development and scoped Voyant publication contexts.
+
 ## 0.1.0-alpha.1
 
 ### Patch Changes

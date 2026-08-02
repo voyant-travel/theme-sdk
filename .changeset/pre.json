@@ -8,6 +8,7 @@
   },
   "changesets": [
     "brave-themes-build",
+    "calm-sites-render",
     "early-themes-arrive"
   ]
 }
