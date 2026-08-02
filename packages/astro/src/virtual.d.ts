@@ -5,5 +5,7 @@ declare module "virtual:voyant-theme" {
   } from "@voyant-travel/theme";
   export const theme: ParsedThemeDefinition;
   export const manifest: ParsedThemeDefinition["manifest"];
-  export function resolveThemeContext(input: string | URL): ThemePageContext;
+  export function resolveThemeContext(
+    input: string | URL,
+  ): Promise<ThemePageContext>;
 }

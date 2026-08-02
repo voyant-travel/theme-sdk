@@ -3,7 +3,10 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { checkThemeDefinition } from "../src/index.js";
-import { createThemeBuildMetadata } from "../src/tooling.js";
+import {
+  createThemeBuildMetadata,
+  parseThemeBuildRuntime,
+} from "../src/tooling.js";
 import { validTheme } from "./helpers.js";
 
 describe("createThemeBuildMetadata", () => {
@@ -47,6 +50,8 @@ describe("createThemeBuildMetadata", () => {
       "assets/app.js",
       "index.html",
     ]);
+    expect(first.schemaVersion).toBe("voyant.theme.build.v2");
+    expect(first.runtime).toBeNull();
     expect(first.digest).toMatch(/^[a-f0-9]{64}$/);
     expect(
       JSON.parse(
@@ -56,5 +61,60 @@ describe("createThemeBuildMetadata", () => {
         ),
       ),
     ).toEqual(first);
+  });
+
+  it("records a validated Cloudflare server runtime in the artifact digest", async () => {
+    const checked = checkThemeDefinition(validTheme());
+    const root = await mkdtemp(path.join(tmpdir(), "voyant-runtime-"));
+    if (!checked.theme) throw new Error("Test setup failed.");
+    await mkdir(path.join(root, "dist"), { recursive: true });
+    await mkdir(path.join(root, "dist/client"), { recursive: true });
+    await mkdir(path.join(root, "dist/server"), { recursive: true });
+    await writeFile(path.join(root, "dist/client/app.css"), "asset");
+    await writeFile(path.join(root, "dist/server/entry.mjs"), "worker");
+    const runtime = parseThemeBuildRuntime({
+      schemaVersion: "voyant.theme.runtime.v1",
+      platform: "cloudflare-workers",
+      entrypoint: "server/entry.mjs",
+      assetsDirectory: "client",
+      assetsBinding: "ASSETS",
+      compatibilityFlags: ["nodejs_compat"],
+      requiredBindings: ["PUBLICATION", "VOYANT_PUBLICATION_TOKEN"],
+    });
+
+    const metadata = await createThemeBuildMetadata({
+      projectRoot: root,
+      outputDirectory: "dist",
+      theme: checked.theme,
+      runtime,
+    });
+
+    expect(metadata.runtime).toEqual(runtime);
+    expect(metadata.digest).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it("rejects a runtime descriptor for a different artifact directory", async () => {
+    const checked = checkThemeDefinition(validTheme());
+    const root = await mkdtemp(path.join(tmpdir(), "voyant-runtime-path-"));
+    if (!checked.theme) throw new Error("Test setup failed.");
+    await mkdir(path.join(root, "dist/client"), { recursive: true });
+    await writeFile(path.join(root, "dist/client/app.css"), "asset");
+
+    await expect(
+      createThemeBuildMetadata({
+        projectRoot: root,
+        outputDirectory: "dist",
+        theme: checked.theme,
+        runtime: parseThemeBuildRuntime({
+          schemaVersion: "voyant.theme.runtime.v1",
+          platform: "cloudflare-workers",
+          entrypoint: "server/missing.mjs",
+          assetsDirectory: "client",
+          assetsBinding: "ASSETS",
+          compatibilityFlags: [],
+          requiredBindings: [],
+        }),
+      }),
+    ).rejects.toThrow("entrypoint");
   });
 });

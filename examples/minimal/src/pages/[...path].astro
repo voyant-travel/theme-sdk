@@ -1,21 +1,7 @@
 ---
-import { theme } from "virtual:voyant-theme";
+import { resolveThemeContext } from "virtual:voyant-theme";
 
-export function getStaticPaths() {
-  const contexts = [
-    theme.fixtures.home,
-    ...theme.fixtures.content,
-    theme.fixtures.notFound,
-  ];
-  return contexts.map((context) => ({
-    params: {
-      path: context.path === "/" ? undefined : context.path.replace(/^\//, ""),
-    },
-    props: { context },
-  }));
-}
-
-const { context } = Astro.props;
+const context = await resolveThemeContext(Astro.url);
 if (context.kind === "notFound") Astro.response.status = 404;
 ---
 

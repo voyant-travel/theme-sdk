@@ -40,14 +40,138 @@ export interface ThemeBuildFile {
   sha256: string;
 }
 
+export interface ThemeBuildRuntime {
+  schemaVersion: "voyant.theme.runtime.v1";
+  platform: "cloudflare-workers";
+  entrypoint: string;
+  assetsDirectory: string;
+  assetsBinding: string;
+  compatibilityFlags: string[];
+  requiredBindings: string[];
+}
+
 export interface ThemeBuildMetadata {
-  schemaVersion: "voyant.theme.build.v1";
+  schemaVersion: "voyant.theme.build.v2";
   contractVersion: ParsedThemeDefinition["contractVersion"];
   theme: { id: string; version: string };
   routes: Array<{ id: string; pattern: string; context: string }>;
   outputDirectory: string;
+  runtime: ThemeBuildRuntime | null;
   files: ThemeBuildFile[];
   digest: string;
+}
+
+const THEME_RUNTIME_METADATA_PATH = ".voyant/theme-runtime.json";
+
+function requiredRuntimeString(
+  runtime: Record<string, unknown>,
+  field: keyof ThemeBuildRuntime,
+): string {
+  const value = runtime[field];
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error(`Theme runtime ${field} must be a non-empty string.`);
+  }
+  return value.trim();
+}
+
+function requiredRuntimePath(
+  runtime: Record<string, unknown>,
+  field: "assetsDirectory" | "entrypoint",
+): string {
+  const value = requiredRuntimeString(runtime, field).replaceAll("\\", "/");
+  const segments = value.split("/");
+  if (
+    value.startsWith("/") ||
+    segments.some((segment) => !segment || segment === "." || segment === "..")
+  ) {
+    throw new Error(`Theme runtime ${field} must be a safe relative path.`);
+  }
+  return value;
+}
+
+function requiredRuntimeStrings(
+  runtime: Record<string, unknown>,
+  field: "compatibilityFlags" | "requiredBindings",
+): string[] {
+  const value = runtime[field];
+  if (
+    !Array.isArray(value) ||
+    value.some((item) => typeof item !== "string" || !item.trim())
+  ) {
+    throw new Error(`Theme runtime ${field} must be an array of strings.`);
+  }
+  const values = value.map((item) => String(item).trim());
+  if (new Set(values).size !== values.length) {
+    throw new Error(`Theme runtime ${field} must not contain duplicates.`);
+  }
+  return values;
+}
+
+export function parseThemeBuildRuntime(value: unknown): ThemeBuildRuntime {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new Error("Theme runtime metadata must be an object.");
+  }
+  const runtime = value as Record<string, unknown>;
+  const expectedKeys = [
+    "assetsBinding",
+    "assetsDirectory",
+    "compatibilityFlags",
+    "entrypoint",
+    "platform",
+    "requiredBindings",
+    "schemaVersion",
+  ];
+  const keys = Object.keys(runtime).sort();
+  if (
+    keys.length !== expectedKeys.length ||
+    keys.some((key, index) => key !== expectedKeys[index])
+  ) {
+    throw new Error(
+      "Theme runtime metadata has unsupported or missing fields.",
+    );
+  }
+  if (runtime.schemaVersion !== "voyant.theme.runtime.v1") {
+    throw new Error(
+      "Theme runtime schemaVersion must be voyant.theme.runtime.v1.",
+    );
+  }
+  if (runtime.platform !== "cloudflare-workers") {
+    throw new Error("Theme runtime platform must be cloudflare-workers.");
+  }
+  return {
+    schemaVersion: "voyant.theme.runtime.v1",
+    platform: "cloudflare-workers",
+    entrypoint: requiredRuntimePath(runtime, "entrypoint"),
+    assetsDirectory: requiredRuntimePath(runtime, "assetsDirectory"),
+    assetsBinding: requiredRuntimeString(runtime, "assetsBinding"),
+    compatibilityFlags: requiredRuntimeStrings(runtime, "compatibilityFlags"),
+    requiredBindings: requiredRuntimeStrings(runtime, "requiredBindings"),
+  };
+}
+
+async function loadThemeBuildRuntime(
+  projectRoot: string,
+): Promise<ThemeBuildRuntime | null> {
+  try {
+    return parseThemeBuildRuntime(
+      JSON.parse(
+        await readFile(
+          path.join(projectRoot, THEME_RUNTIME_METADATA_PATH),
+          "utf8",
+        ),
+      ),
+    );
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "ENOENT"
+    ) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export interface LoadedThemeProject {
@@ -295,6 +419,7 @@ export async function createThemeBuildMetadata(options: {
   projectRoot: string;
   outputDirectory: string;
   theme: ParsedThemeDefinition;
+  runtime?: ThemeBuildRuntime | null;
 }): Promise<ThemeBuildMetadata> {
   const projectRoot = path.resolve(options.projectRoot);
   const outputPath = path.resolve(projectRoot, options.outputDirectory);
@@ -309,8 +434,25 @@ export async function createThemeBuildMetadata(options: {
     );
   }
   const normalizedOutput = relativeOutput.split(path.sep).join("/");
+  const runtime = options.runtime
+    ? parseThemeBuildRuntime(options.runtime)
+    : null;
+  const files = await collectBuildFiles(outputPath);
+  if (runtime && !files.some((file) => file.path === runtime.entrypoint)) {
+    throw new Error(
+      "Theme runtime entrypoint is missing from the build output.",
+    );
+  }
+  if (
+    runtime &&
+    !files.some((file) => file.path.startsWith(`${runtime.assetsDirectory}/`))
+  ) {
+    throw new Error(
+      "Theme runtime assetsDirectory is missing from the build output.",
+    );
+  }
   const canonical = {
-    schemaVersion: "voyant.theme.build.v1" as const,
+    schemaVersion: "voyant.theme.build.v2" as const,
     contractVersion: options.theme.contractVersion,
     theme: {
       id: options.theme.manifest.id,
@@ -320,7 +462,8 @@ export async function createThemeBuildMetadata(options: {
       .map(({ id, pattern, context }) => ({ id, pattern, context }))
       .sort((left, right) => left.id.localeCompare(right.id)),
     outputDirectory: normalizedOutput,
-    files: await collectBuildFiles(outputPath),
+    runtime,
+    files,
   };
   const digest = createHash("sha256")
     .update(JSON.stringify(canonical))
@@ -364,6 +507,9 @@ export async function buildTheme(
           projectRoot: options.projectRoot,
           outputDirectory: project.theme.tooling?.outputDirectory ?? "dist",
           theme: project.theme,
+          runtime: await loadThemeBuildRuntime(
+            path.resolve(options.projectRoot),
+          ),
         });
         return report(project, { exitCode, artifact });
       } catch (error) {

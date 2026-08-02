@@ -2,6 +2,21 @@ import { z } from "zod";
 
 export const CONTRACT_VERSION = "v1alpha1" as const;
 
+export const localeSchema = z
+  .string()
+  .min(2)
+  .refine(
+    (value) => {
+      try {
+        const canonical = Intl.getCanonicalLocales(value);
+        return canonical.length === 1 && canonical[0] === value;
+      } catch {
+        return false;
+      }
+    },
+    { message: "Use a canonical BCP-47 locale tag." },
+  );
+
 const identifier = z
   .string()
   .min(1)
@@ -97,7 +112,7 @@ const siteSchema = z.strictObject({
 const navigationSchema = z.array(linkSchema);
 
 const contextBase = {
-  locale: z.string().min(2),
+  locale: localeSchema,
   site: siteSchema,
   navigation: navigationSchema.default([]),
   settings: z.record(z.string(), z.unknown()).default({}),
@@ -142,6 +157,12 @@ export const themePageContextSchema = z.discriminatedUnion("kind", [
   notFoundContextSchema,
 ]);
 
+/** Wire response returned by the Voyant publication reader to a theme Worker. */
+export const themeContextResponseSchema = z.strictObject({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  context: themePageContextSchema,
+});
+
 export const themeFixturesSchema = z.strictObject({
   home: homeContextSchema,
   content: z.array(contentContextSchema).default([]),
@@ -169,6 +190,7 @@ export type HomeContext = z.infer<typeof homeContextSchema>;
 export type ContentContext = z.infer<typeof contentContextSchema>;
 export type NotFoundContext = z.infer<typeof notFoundContextSchema>;
 export type ThemePageContext = z.infer<typeof themePageContextSchema>;
+export type ThemeContextResponse = z.infer<typeof themeContextResponseSchema>;
 export type ThemeDefinition = z.input<typeof themeDefinitionSchema>;
 export type ParsedThemeDefinition = z.output<typeof themeDefinitionSchema>;
 
