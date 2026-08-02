@@ -22,11 +22,15 @@ theme project to implement `voyant theme check`, `build`, and `dev`. See
 
 - `@voyant-travel/theme`: contract schemas, `defineTheme`, fixtures, diagnostics,
   and programmatic tooling.
-- `@voyant-travel/astro`: Astro integration and fixture context resolver.
+- `@voyant-travel/astro`: Astro/Cloudflare integration and context resolver.
 
-The minimal example is intentionally a static fixture build. Its catch-all page
-derives `getStaticPaths` from fixture contexts, producing deterministic home,
-content, and not-found output. This is a local SDK proof, not a decision about
-the later Workers-for-Platforms production runtime.
+The minimal example is one immutable Astro server release. In local development
+its catch-all route renders fixtures. In Voyant, the same release reads the
+current publication through a dispatcher-injected Cloudflare service binding.
+Publishing content therefore changes publication data and edge pointers, not
+theme source or the release artifact.
+
+See [the runtime contract](docs/runtime.md) for the exact Cloudflare bindings,
+request protocol, and deployment metadata.
 
 Licensed under Apache-2.0.

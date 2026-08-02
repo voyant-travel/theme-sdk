@@ -142,6 +142,12 @@ export const themePageContextSchema = z.discriminatedUnion("kind", [
   notFoundContextSchema,
 ]);
 
+/** Wire response returned by the Voyant publication reader to a theme Worker. */
+export const themeContextResponseSchema = z.strictObject({
+  contractVersion: z.literal(CONTRACT_VERSION),
+  context: themePageContextSchema,
+});
+
 export const themeFixturesSchema = z.strictObject({
   home: homeContextSchema,
   content: z.array(contentContextSchema).default([]),
@@ -169,6 +175,7 @@ export type HomeContext = z.infer<typeof homeContextSchema>;
 export type ContentContext = z.infer<typeof contentContextSchema>;
 export type NotFoundContext = z.infer<typeof notFoundContextSchema>;
 export type ThemePageContext = z.infer<typeof themePageContextSchema>;
+export type ThemeContextResponse = z.infer<typeof themeContextResponseSchema>;
 export type ThemeDefinition = z.input<typeof themeDefinitionSchema>;
 export type ParsedThemeDefinition = z.output<typeof themeDefinitionSchema>;
 

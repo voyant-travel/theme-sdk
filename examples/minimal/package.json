@@ -9,10 +9,11 @@
     "dev": "astro dev"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "14.1.7",
     "@astrojs/check": "^0.9.4",
     "@voyant-travel/astro": "workspace:*",
     "@voyant-travel/theme": "workspace:*",
-    "astro": "^5.15.3",
+    "astro": "7.1.6",
     "typescript": "5.9.2"
   }
 }

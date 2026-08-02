@@ -1,10 +1,238 @@
-import { describe, expect, it } from "vitest";
-import { createThemeContextResolver } from "../src/runtime.js";
+import { describe, expect, it, vi } from "vitest";
+import {
+  createThemeContextResolver,
+  PUBLICATION_BINDING_NAMES,
+  PUBLICATION_REQUEST_HEADERS,
+  PUBLICATION_RESPONSE_HEADERS,
+  ThemeRuntimeError,
+  type VoyantPublicationBindings,
+} from "../src/runtime.js";
+
+const theme = {
+  contractVersion: "v1alpha1" as const,
+  manifest: {
+    id: "runtime-test",
+    name: "Runtime test",
+    version: "0.1.0",
+    routes: [
+      { id: "home", pattern: "/", context: "home" as const },
+      {
+        id: "content",
+        pattern: "/stories/[...path]",
+        context: "content" as const,
+      },
+      { id: "not-found", pattern: "/404", context: "notFound" as const },
+    ],
+  },
+  fixtures: {
+    home: {
+      kind: "home" as const,
+      path: "/" as const,
+      locale: "en",
+      site: { name: "Fixture site" },
+      title: "Fixture home",
+    },
+    content: [],
+    notFound: {
+      kind: "notFound" as const,
+      path: "/404",
+      locale: "en",
+      site: { name: "Fixture site" },
+      title: "Missing",
+    },
+  },
+};
+
+function publishedContext(path = "/stories/north") {
+  return {
+    contractVersion: "v1alpha1",
+    context: {
+      kind: "content",
+      path,
+      slug: "north",
+      locale: "en",
+      site: { name: "Published site" },
+      navigation: [],
+      settings: {},
+      title: "Published story",
+      body: "Immutable release, current publication.",
+    },
+  };
+}
+
+function bindings(
+  fetch: VoyantPublicationBindings["PUBLICATION"]["fetch"],
+): VoyantPublicationBindings {
+  return {
+    PUBLICATION: { fetch },
+    VOYANT_PUBLICATION_TOKEN: "scoped-token",
+    VOYANT_SITE_ID: "site_123",
+    VOYANT_PUBLICATION_ID: "pub_456",
+    VOYANT_THEME_RELEASE_ID: "release_789",
+  };
+}
 
 describe("createThemeContextResolver", () => {
   it("rejects an invalid contract before rendering", () => {
     expect(() =>
       createThemeContextResolver({ contractVersion: "future" } as never),
     ).toThrow("THEME_SCHEMA_INVALID");
+  });
+
+  it("uses local fixtures when the complete production binding set is absent", async () => {
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(resolve("http://localhost:4321/")).resolves.toMatchObject({
+      kind: "home",
+      title: "Fixture home",
+    });
+  });
+
+  it("loads a v1alpha1 context through the scoped publication Fetcher", async () => {
+    const fetch = vi.fn(async (_input: RequestInfo | URL) =>
+      Response.json(publishedContext()),
+    );
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(
+      resolve(
+        "https://north.example/stories/north?locale=en#section",
+        bindings(fetch),
+      ),
+    ).resolves.toMatchObject({ kind: "content", title: "Published story" });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const request = fetch.mock.calls[0]?.[0];
+    expect(request).toBeInstanceOf(Request);
+    if (!(request instanceof Request)) throw new Error("Expected a Request.");
+    expect(request.url).toBe("https://north.example/stories/north?locale=en");
+    expect(request.headers.get("authorization")).toBe("Bearer scoped-token");
+    expect(request.headers.get(PUBLICATION_REQUEST_HEADERS.siteId)).toBe(
+      "site_123",
+    );
+    expect(request.headers.get(PUBLICATION_REQUEST_HEADERS.publicationId)).toBe(
+      "pub_456",
+    );
+    expect(request.headers.get(PUBLICATION_REQUEST_HEADERS.releaseId)).toBe(
+      "release_789",
+    );
+    expect(
+      request.headers.get(PUBLICATION_REQUEST_HEADERS.contractVersion),
+    ).toBe("v1alpha1");
+  });
+
+  it("matches a localized public URL to its locale-independent context path", async () => {
+    const localized = publishedContext("/stories/north");
+    localized.context.locale = "fr";
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(
+      resolve(
+        "https://north.example/fr/stories/north?locale=fr",
+        bindings(async () => Response.json(localized)),
+      ),
+    ).resolves.toMatchObject({
+      locale: "fr",
+      path: "/stories/north",
+    });
+  });
+
+  it("fails closed when only part of the production binding set is present", async () => {
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(
+      resolve("https://north.example/", {
+        PUBLICATION: { fetch: vi.fn() },
+        VOYANT_SITE_ID: "site_123",
+      }),
+    ).rejects.toMatchObject({ code: "THEME_RUNTIME_BINDINGS_INVALID" });
+  });
+
+  it.each([
+    ["reader error", new Response(null, { status: 503 })],
+    [
+      "future contract",
+      Response.json({ ...publishedContext(), contractVersion: "v2" }),
+    ],
+    ["wrong path", Response.json(publishedContext("/stories/elsewhere"))],
+    ["malformed context", Response.json({ contractVersion: "v1alpha1" })],
+  ])("fails closed for %s", async (_label, response) => {
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(
+      resolve(
+        "https://north.example/stories/north?locale=en",
+        bindings(async () => response.clone()),
+      ),
+    ).rejects.toBeInstanceOf(ThemeRuntimeError);
+  });
+
+  it("accepts the reader's typed not-found fallback", async () => {
+    const fallback = {
+      contractVersion: "v1alpha1",
+      context: {
+        kind: "notFound",
+        path: "/404",
+        locale: "en",
+        site: { name: "Published site" },
+        navigation: [],
+        settings: {},
+        title: "Not found",
+      },
+    };
+    const response = Response.json(fallback, {
+      headers: {
+        [PUBLICATION_RESPONSE_HEADERS.contextPath]: "/404",
+        [PUBLICATION_RESPONSE_HEADERS.requestedPath]: "/missing",
+      },
+      status: 404,
+    });
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(
+      resolve(
+        "https://north.example/missing?locale=en",
+        bindings(async () => response.clone()),
+      ),
+    ).resolves.toMatchObject({ kind: "notFound", path: "/404" });
+  });
+
+  it("validates localized not-found headers against the content path", async () => {
+    const fallback = {
+      contractVersion: "v1alpha1",
+      context: {
+        kind: "notFound",
+        path: "/404",
+        locale: "fr",
+        site: { name: "Published site" },
+        navigation: [],
+        settings: {},
+        title: "Introuvable",
+      },
+    };
+    const response = Response.json(fallback, {
+      headers: {
+        [PUBLICATION_RESPONSE_HEADERS.contextPath]: "/404",
+        [PUBLICATION_RESPONSE_HEADERS.requestedPath]: "/missing",
+      },
+      status: 404,
+    });
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(
+      resolve(
+        "https://north.example/fr/missing?locale=fr",
+        bindings(async () => response.clone()),
+      ),
+    ).resolves.toMatchObject({ kind: "notFound", locale: "fr" });
+  });
+
+  it("keeps the public binding contract intentionally small", () => {
+    expect(PUBLICATION_BINDING_NAMES).toEqual([
+      "PUBLICATION",
+      "VOYANT_PUBLICATION_TOKEN",
+      "VOYANT_SITE_ID",
+      "VOYANT_PUBLICATION_ID",
+      "VOYANT_THEME_RELEASE_ID",
+    ]);
   });
 });
