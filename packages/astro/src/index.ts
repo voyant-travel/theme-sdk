@@ -33,8 +33,20 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
   return {
     name: "@voyant-travel/astro",
     hooks: {
-      "astro:config:setup": ({ config, updateConfig, logger }) => {
+      "astro:config:setup": ({
+        addMiddleware,
+        config,
+        updateConfig,
+        logger,
+      }) => {
         projectRoot = config.root;
+        // Operator code injection belongs to every theme, so it is wired here
+        // rather than left for a theme author to remember. `post` so it runs
+        // after the theme's own middleware and splices the finished document.
+        addMiddleware({
+          entrypoint: "@voyant-travel/astro/middleware",
+          order: "post",
+        });
         const checked = checkThemeDefinition(options.theme);
         if (!checked.ok || !checked.theme) {
           for (const diagnostic of checked.diagnostics)
