@@ -97,6 +97,31 @@ describe("createThemeBuildMetadata", () => {
     ]);
   });
 
+  it("accepts a colour setting and rejects a default that is not one", async () => {
+    // A host renders this as a swatch picker, so the default has to be a value
+    // a picker can show. Accepting `rebeccapurple` or `oklch(...)` would mean
+    // every host had to parse CSS colours before it could render the control.
+    const theme = validTheme();
+    theme.manifest.settings = [
+      { id: "accent", label: "Accent", type: "color", default: "#0b3d2e" },
+    ];
+    expect(checkThemeDefinition(theme).theme).toBeTruthy();
+
+    const shorthand = validTheme();
+    shorthand.manifest.settings = [
+      { id: "accent", label: "Accent", type: "color", default: "#0b3" },
+    ];
+    expect(checkThemeDefinition(shorthand).theme).toBeTruthy();
+
+    for (const bad of ["rebeccapurple", "0b3d2e", "#0b3d2", "rgb(1,2,3)"]) {
+      const invalid = validTheme();
+      invalid.manifest.settings = [
+        { id: "accent", label: "Accent", type: "color", default: bad },
+      ];
+      expect(checkThemeDefinition(invalid).theme).toBeFalsy();
+    }
+  });
+
   it("carries an empty list for a theme that declares no settings", async () => {
     const checked = checkThemeDefinition(validTheme());
     const root = await mkdtemp(path.join(tmpdir(), "voyant-nosettings-"));

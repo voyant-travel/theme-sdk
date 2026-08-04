@@ -115,6 +115,25 @@ export const themeFieldSchema = z.discriminatedUnion("type", [
     type: z.literal("image"),
     required: z.boolean().optional(),
   }),
+  /**
+   * A colour, so a host can offer a swatch picker instead of asking an operator
+   * to type a hex code into a text box.
+   *
+   * The default is constrained to `#rgb` or `#rrggbb` rather than accepting any
+   * CSS colour. Named colours and `oklch()` would each need a host to parse
+   * them before it could render a picker, and a theme that wants that
+   * expressiveness can declare a `select` of its own palette.
+   */
+  z.strictObject({
+    id: identifier,
+    label: z.string().min(1),
+    type: z.literal("color"),
+    required: z.boolean().optional(),
+    default: z
+      .string()
+      .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Use #rgb or #rrggbb.")
+      .optional(),
+  }),
 ]);
 
 export const themeSectionSchema = z.strictObject({
