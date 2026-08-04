@@ -66,9 +66,11 @@ Successful reads return JSON shaped as
 `{ contractVersion: "v1alpha2", context: ThemePageContext }` and include
 `X-Voyant-Publication-Locale: <canonical BCP-47 locale>`. Context locales must
 be canonical BCP-47 tags, such as `en`, `en-US`, or `zh-Hant-TW`. The resolver
-caps the buffered response at 2 MiB, validates the schema, requires the
-header to exactly equal `context.locale`, and only then verifies that the
-context path equals the requested path.
+caps the buffered response at 2 MiB, validates the strict envelope and the open
+context, requires the header to exactly equal `context.locale`, and only then
+verifies that the context path equals the requested path. Context fields the
+theme's SDK release predates are carried through rather than rejected; see
+[the contract](contract.md).
 
 For an unknown path, the reader may return a typed `notFound` envelope with HTTP
 404, `X-Voyant-Publication-Locale`,
