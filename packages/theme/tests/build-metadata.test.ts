@@ -63,6 +63,55 @@ describe("createThemeBuildMetadata", () => {
     ).toEqual(first);
   });
 
+  it("carries the settings a theme declares, in declaration order", async () => {
+    // A host renders its settings editor from this list. Dropping it here
+    // would leave `manifest.settings` validated but invisible, so a theme
+    // could declare a setting nobody can ever supply a value for.
+    const theme = validTheme();
+    theme.manifest.settings = [
+      { id: "brand-color", label: "Brand colour", type: "text" },
+      {
+        id: "density",
+        label: "Density",
+        type: "select",
+        options: [
+          { label: "Comfortable", value: "comfortable" },
+          { label: "Compact", value: "compact" },
+        ],
+      },
+    ];
+    const checked = checkThemeDefinition(theme);
+    const root = await mkdtemp(path.join(tmpdir(), "voyant-settings-"));
+    if (!checked.theme) throw new Error("Test setup failed.");
+    await mkdir(path.join(root, "dist"), { recursive: true });
+    await writeFile(path.join(root, "dist", "index.html"), "home");
+
+    const metadata = await createThemeBuildMetadata({
+      projectRoot: root,
+      outputDirectory: "dist",
+      theme: checked.theme,
+    });
+    expect(metadata.settings.map((field) => field.id)).toEqual([
+      "brand-color",
+      "density",
+    ]);
+  });
+
+  it("carries an empty list for a theme that declares no settings", async () => {
+    const checked = checkThemeDefinition(validTheme());
+    const root = await mkdtemp(path.join(tmpdir(), "voyant-nosettings-"));
+    if (!checked.theme) throw new Error("Test setup failed.");
+    await mkdir(path.join(root, "dist"), { recursive: true });
+    await writeFile(path.join(root, "dist", "index.html"), "home");
+
+    const metadata = await createThemeBuildMetadata({
+      projectRoot: root,
+      outputDirectory: "dist",
+      theme: checked.theme,
+    });
+    expect(metadata.settings).toEqual([]);
+  });
+
   it("orders paths by code unit rather than locale collation", async () => {
     const checked = checkThemeDefinition(validTheme());
     const root = await mkdtemp(path.join(tmpdir(), "voyant-order-"));

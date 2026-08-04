@@ -55,6 +55,14 @@ export interface ThemeBuildMetadata {
   contractVersion: ParsedThemeDefinition["contractVersion"];
   theme: { id: string; version: string };
   routes: Array<{ id: string; pattern: string; context: string }>;
+  /**
+   * The settings the theme declares, carried verbatim so a host can render an
+   * editor for them. Without this the declaration reaches the build and stops:
+   * `manifest.settings` is validated but nothing downstream can see it, so an
+   * operator has no way to supply the values the theme reads from
+   * `context.settings`.
+   */
+  settings: ParsedThemeDefinition["manifest"]["settings"];
   outputDirectory: string;
   runtime: ThemeBuildRuntime | null;
   files: ThemeBuildFile[];
@@ -476,6 +484,10 @@ export async function createThemeBuildMetadata(options: {
     routes: options.theme.manifest.routes
       .map(({ id, pattern, context }) => ({ id, pattern, context }))
       .sort((left, right) => left.id.localeCompare(right.id)),
+    // Declaration order is preserved, unlike routes: a theme orders its
+    // settings the way it wants them presented, and sorting them by id would
+    // scatter a deliberate grouping.
+    settings: options.theme.manifest.settings,
     outputDirectory: normalizedOutput,
     runtime,
     files,
