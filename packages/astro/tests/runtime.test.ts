@@ -104,7 +104,7 @@ describe("createThemeContextResolver", () => {
     });
   });
 
-  it("loads a v1alpha2 context through the scoped publication Fetcher", async () => {
+  it("requests its own contract version and reads an older publication", async () => {
     const fetch = vi.fn(async (_input: RequestInfo | URL) =>
       publishedResponse(),
     );
@@ -131,9 +131,14 @@ describe("createThemeContextResolver", () => {
     expect(request.headers.get(PUBLICATION_REQUEST_HEADERS.releaseId)).toBe(
       "release_789",
     );
+    // A theme asks for the version it was built against, and accepts any
+    // readable one in the answer. The response here is a v1alpha2 envelope, so
+    // this covers both halves at once. Asserted against the theme's own
+    // declaration rather than a literal, so bumping the contract cannot quietly
+    // turn this into a test of the wrong version.
     expect(
       request.headers.get(PUBLICATION_REQUEST_HEADERS.contractVersion),
-    ).toBe("v1alpha2");
+    ).toBe(theme.contractVersion);
   });
 
   it("renders a publication that grew fields this release predates", async () => {
