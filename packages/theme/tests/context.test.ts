@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
   CONTRACT_VERSION,
+  collectionEntrySchema,
+  collectionIndexContextSchema,
   contentContextSchema,
   homeContextSchema,
   READABLE_CONTRACT_VERSIONS,
@@ -101,10 +103,12 @@ describe("published context forward compatibility", () => {
         cacheHint: "public",
       }).success,
     ).toBe(false);
-    // Readable versions are an explicit list, not "anything that parses".
+    // Readable versions are an explicit list, not "anything that parses". This
+    // names a version that does not exist yet on purpose, so it has to be
+    // bumped past whatever the current one becomes.
     expect(
       themeContextResponseSchema.safeParse({
-        contractVersion: "v1alpha3",
+        contractVersion: "v1alpha4",
         context: homeContext(),
       }).success,
     ).toBe(false);
@@ -208,5 +212,94 @@ describe("published context fields", () => {
         }),
       ).openGraph?.image?.src,
     ).toBe("/social.png");
+  });
+});
+
+function collectionEntry(extra: Record<string, unknown> = {}) {
+  return {
+    id: "transylvania",
+    slug: "transylvania",
+    path: "/guides/transylvania",
+    title: "Transylvania in autumn",
+    values: { author: { id: "ana", title: "Ana Pop" } },
+    ...extra,
+  };
+}
+
+function collectionContextBase() {
+  return {
+    locale: "en",
+    site: { name: "Northstar" },
+    navigation: [],
+    menus: {},
+    seo: { title: "Travel guides" },
+    settings: {},
+    collection: { id: "guides", name: "Travel guides" },
+  };
+}
+
+describe("collection contexts", () => {
+  it("parses an index and an entry through the page union", () => {
+    const index = themePageContextSchema.parse({
+      ...collectionContextBase(),
+      kind: "collectionIndex",
+      path: "/guides",
+      title: "Travel guides",
+      entries: [collectionEntry()],
+    });
+    expect(index.kind).toBe("collectionIndex");
+
+    const entry = themePageContextSchema.parse({
+      ...collectionContextBase(),
+      kind: "collectionEntry",
+      path: "/guides/transylvania",
+      title: "Transylvania in autumn",
+      entry: collectionEntry(),
+    });
+    expect(entry.kind).toBe("collectionEntry");
+  });
+
+  it("keeps operator-declared values verbatim, whatever their shape", () => {
+    const parsed = collectionEntrySchema.parse(
+      collectionEntry({
+        values: {
+          published: "2026-08-04",
+          rating: 5,
+          featured: true,
+          cover: { src: "https://cdn.example/a.jpg", alt: "A ridge" },
+        },
+      }),
+    );
+
+    expect(parsed.values).toEqual({
+      published: "2026-08-04",
+      rating: 5,
+      featured: true,
+      cover: { src: "https://cdn.example/a.jpg", alt: "A ridge" },
+    });
+  });
+
+  it("leaves path absent for an entry whose type has no pages", () => {
+    const author = collectionEntrySchema.parse({
+      id: "ana",
+      slug: "ana",
+      title: "Ana Pop",
+      values: {},
+    });
+
+    // A theme has to check this rather than assume it: linking to an entry with
+    // no page of its own would produce a 404 that reads as deliberate.
+    expect(author.path).toBeUndefined();
+  });
+
+  it("defaults an index with no entries rather than failing the page", () => {
+    const empty = collectionIndexContextSchema.parse({
+      ...collectionContextBase(),
+      kind: "collectionIndex",
+      path: "/guides",
+      title: "Travel guides",
+    });
+
+    expect(empty.entries).toEqual([]);
   });
 });
