@@ -15,7 +15,7 @@ if (context.kind === "notFound") Astro.response.status = 404;
 
 When no Voyant publication bindings exist, the resolver uses fixtures. When the
 dispatcher injects any production binding, all five are required and errors
-fail closed. Theme code always receives the validated `v1alpha1` context.
+fail closed. Theme code always receives the validated `v1alpha2` context.
 
 Add `/// <reference types="@voyant-travel/astro/virtual" />` to `src/env.d.ts`
 for editor and type-checker support. The types subpath is owned and published by

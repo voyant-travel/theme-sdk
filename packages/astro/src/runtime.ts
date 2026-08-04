@@ -276,7 +276,7 @@ async function resolvePublishedContext(
   if (!parsed.success) {
     throw new ThemeRuntimeError(
       "THEME_CONTEXT_RESPONSE_INVALID",
-      "Voyant publication context does not match the v1alpha1 contract.",
+      `Voyant publication context does not match the ${CONTRACT_VERSION} contract.`,
     );
   }
   const publicationLocale = response.headers.get(

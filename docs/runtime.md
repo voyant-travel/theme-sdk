@@ -2,7 +2,7 @@
 
 One theme source commit produces one immutable Astro server release. Local
 development renders `theme.config.ts` fixtures. A Voyant deployment renders the
-same `v1alpha1` context types from the selected publication without rebuilding
+same `v1alpha2` context types from the selected publication without rebuilding
 theme source when operators publish content.
 
 This contract follows the current official Astro Cloudflare adapter:
@@ -55,7 +55,7 @@ The request contains:
 - `X-Voyant-Site-Id`;
 - `X-Voyant-Publication-Id`;
 - `X-Voyant-Theme-Release-Id`;
-- `X-Voyant-Theme-Contract-Version: v1alpha1`.
+- `X-Voyant-Theme-Contract-Version: v1alpha2`.
 
 The server-owned reader maps that scope to
 `themes/publications/{siteId}/{publicationId}/{releaseId}` and resolves context
@@ -63,10 +63,10 @@ objects under `contexts/{locale}/{path-key}.json`. The theme cannot choose an R2
 key or storage prefix.
 
 Successful reads return JSON shaped as
-`{ contractVersion: "v1alpha1", context: ThemePageContext }` and include
+`{ contractVersion: "v1alpha2", context: ThemePageContext }` and include
 `X-Voyant-Publication-Locale: <canonical BCP-47 locale>`. Context locales must
 be canonical BCP-47 tags, such as `en`, `en-US`, or `zh-Hant-TW`. The resolver
-caps the buffered response at 2 MiB, validates the strict schema, requires the
+caps the buffered response at 2 MiB, validates the schema, requires the
 header to exactly equal `context.locale`, and only then verifies that the
 context path equals the requested path.
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.voyant.travel/theme/v1alpha1/theme-manifest.schema.json",
-  "title": "Voyant theme manifest v1alpha1",
+  "$id": "https://schemas.voyant.travel/theme/v1alpha2/theme-manifest.schema.json",
+  "title": "Voyant theme manifest v1alpha2",
   "type": "object",
   "additionalProperties": false,
   "required": ["id", "name", "version", "routes"],

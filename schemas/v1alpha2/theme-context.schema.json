@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.voyant.travel/theme/v1alpha2/theme-context.schema.json",
+  "title": "Voyant page context v1alpha2",
+  "description": "Contexts are open: Voyant may add properties without a contract version change, and a theme that ignores them still renders. No object here sets additionalProperties: false.",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": [
+        "kind",
+        "path",
+        "locale",
+        "site",
+        "seo",
+        "menus",
+        "title",
+        "sections"
+      ],
+      "properties": { "kind": { "const": "home" }, "path": { "const": "/" } }
+    },
+    {
+      "type": "object",
+      "required": [
+        "kind",
+        "path",
+        "locale",
+        "site",
+        "seo",
+        "menus",
+        "slug",
+        "title",
+        "body"
+      ],
+      "properties": { "kind": { "const": "content" } }
+    },
+    {
+      "type": "object",
+      "required": ["kind", "path", "locale", "site", "seo", "menus", "title"],
+      "properties": { "kind": { "const": "notFound" } }
+    }
+  ],
+  "$defs": {
+    "seo": {
+      "type": "object",
+      "required": ["title", "noIndex"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "noIndex": { "type": "boolean" }
+      }
+    },
+    "openGraph": {
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "image": { "$ref": "#/$defs/image" }
+      }
+    },
+    "image": {
+      "type": "object",
+      "required": ["src", "alt"],
+      "properties": {
+        "src": { "type": "string", "minLength": 1 },
+        "alt": { "type": "string" },
+        "width": { "type": "integer", "exclusiveMinimum": 0 },
+        "height": { "type": "integer", "exclusiveMinimum": 0 }
+      }
+    },
+    "menus": {
+      "type": "object",
+      "description": "Named menus, keyed by operator-chosen name. `primary` and `footer` are conventional.",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "$ref": "#/$defs/menuItem" }
+      }
+    },
+    "menuItem": {
+      "type": "object",
+      "required": ["label", "href"],
+      "properties": {
+        "label": { "type": "string", "minLength": 1 },
+        "href": { "type": "string", "minLength": 1 },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/menuItem" }
+        }
+      }
+    },
+    "codeInjection": {
+      "type": "object",
+      "description": "Raw operator markup, sanitized and bounded by Voyant. Themes place it verbatim and must not escape or re-sanitize it.",
+      "properties": {
+        "head": { "type": "string" },
+        "bodyStart": { "type": "string" },
+        "bodyEnd": { "type": "string" }
+      }
+    }
+  }
+}

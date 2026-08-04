@@ -10,9 +10,19 @@ if (context.kind === "notFound") Astro.response.status = 404;
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
-    <title>{context.title} · {context.site.name}</title>
+    <title>{context.seo.title} · {context.site.name}</title>
+    {context.seo.description && <meta name="description" content={context.seo.description} />}
+    {context.seo.noIndex && <meta name="robots" content="noindex" />}
+    {context.openGraph?.title && <meta property="og:title" content={context.openGraph.title} />}
+    {context.openGraph?.description && <meta property="og:description" content={context.openGraph.description} />}
+    {context.openGraph?.image && <meta property="og:image" content={context.openGraph.image.src} />}
+    {/* Operator markup arrives sanitized and bounded. Placing it is the theme's
+        job; escaping it here would defeat the analytics and consent tags it
+        exists for. */}
+    {context.codeInjection?.head && <Fragment set:html={context.codeInjection.head} />}
   </head>
   <body>
+    {context.codeInjection?.bodyStart && <Fragment set:html={context.codeInjection.bodyStart} />}
     <header>
       <a href="/">{context.site.name}</a>
       <nav>{context.navigation.map((item) => <a href={item.href}>{item.label}</a>)}</nav>
@@ -24,6 +34,10 @@ if (context.kind === "notFound") Astro.response.status = 404;
       {context.kind === "home" && context.sections.map((section) => <section data-type={section.type}>{String(section.data.eyebrow ?? "")}</section>)}
       {context.kind === "notFound" && <p>{context.message}</p>}
     </main>
+    <footer>
+      <nav>{(context.menus.footer ?? []).map((item) => <a href={item.href}>{item.label}</a>)}</nav>
+    </footer>
+    {context.codeInjection?.bodyEnd && <Fragment set:html={context.codeInjection.bodyEnd} />}
   </body>
 </html>
 

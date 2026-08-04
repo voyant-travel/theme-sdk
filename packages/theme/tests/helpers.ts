@@ -2,7 +2,7 @@ import { defineTheme, type ThemeDefinition } from "../src/index.js";
 
 export function validTheme(): ThemeDefinition {
   return defineTheme({
-    contractVersion: "v1alpha1",
+    contractVersion: "v1alpha2",
     manifest: {
       id: "test-theme",
       name: "Test theme",
@@ -22,6 +22,8 @@ export function validTheme(): ThemeDefinition {
         locale: "en",
         site: { name: "Test" },
         navigation: [],
+        menus: {},
+        seo: { title: "Home" },
         settings: {},
         title: "Home",
         sections: [],
@@ -34,6 +36,8 @@ export function validTheme(): ThemeDefinition {
           locale: "en",
           site: { name: "Test" },
           navigation: [],
+          menus: {},
+          seo: { title: "One" },
           settings: {},
           title: "One",
           body: "Body",
@@ -45,6 +49,8 @@ export function validTheme(): ThemeDefinition {
         locale: "en",
         site: { name: "Test" },
         navigation: [],
+        menus: {},
+        seo: { title: "Missing", noIndex: true },
         settings: {},
         title: "Missing",
       },

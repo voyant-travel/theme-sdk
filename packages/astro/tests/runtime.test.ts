@@ -9,7 +9,7 @@ import {
 } from "../src/runtime.js";
 
 const theme = {
-  contractVersion: "v1alpha1" as const,
+  contractVersion: "v1alpha2" as const,
   manifest: {
     id: "runtime-test",
     name: "Runtime test",
@@ -30,6 +30,7 @@ const theme = {
       path: "/" as const,
       locale: "en",
       site: { name: "Fixture site" },
+      seo: { title: "Fixture home" },
       title: "Fixture home",
     },
     content: [],
@@ -38,6 +39,7 @@ const theme = {
       path: "/404",
       locale: "en",
       site: { name: "Fixture site" },
+      seo: { title: "Missing" },
       title: "Missing",
     },
   },
@@ -45,7 +47,7 @@ const theme = {
 
 function publishedContext(path = "/stories/north") {
   return {
-    contractVersion: "v1alpha1",
+    contractVersion: "v1alpha2",
     context: {
       kind: "content",
       path,
@@ -53,6 +55,8 @@ function publishedContext(path = "/stories/north") {
       locale: "en",
       site: { name: "Published site" },
       navigation: [],
+      menus: {},
+      seo: { title: "Published story", noIndex: false },
       settings: {},
       title: "Published story",
       body: "Immutable release, current publication.",
@@ -97,7 +101,7 @@ describe("createThemeContextResolver", () => {
     });
   });
 
-  it("loads a v1alpha1 context through the scoped publication Fetcher", async () => {
+  it("loads a v1alpha2 context through the scoped publication Fetcher", async () => {
     const fetch = vi.fn(async (_input: RequestInfo | URL) =>
       publishedResponse(),
     );
@@ -126,7 +130,23 @@ describe("createThemeContextResolver", () => {
     );
     expect(
       request.headers.get(PUBLICATION_REQUEST_HEADERS.contractVersion),
-    ).toBe("v1alpha1");
+    ).toBe("v1alpha2");
+  });
+
+  it("renders a publication that grew fields this release predates", async () => {
+    const published = publishedContext();
+    const grown = {
+      ...published,
+      context: { ...published.context, readingMinutes: 4 },
+    };
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(
+      resolve(
+        "https://north.example/stories/north?locale=en",
+        bindings(async () => publishedResponse(grown)),
+      ),
+    ).resolves.toMatchObject({ kind: "content", readingMinutes: 4 });
   });
 
   it("matches a localized public URL to its locale-independent context path", async () => {
@@ -163,7 +183,7 @@ describe("createThemeContextResolver", () => {
       publishedResponse({ ...publishedContext(), contractVersion: "v2" }),
     ],
     ["wrong path", publishedResponse(publishedContext("/stories/elsewhere"))],
-    ["malformed context", Response.json({ contractVersion: "v1alpha1" })],
+    ["malformed context", Response.json({ contractVersion: "v1alpha2" })],
   ])("fails closed for %s", async (_label, response) => {
     const resolve = createThemeContextResolver(theme);
 
@@ -201,13 +221,15 @@ describe("createThemeContextResolver", () => {
 
   it("accepts the reader's typed not-found fallback", async () => {
     const fallback = {
-      contractVersion: "v1alpha1",
+      contractVersion: "v1alpha2",
       context: {
         kind: "notFound",
         path: "/404",
         locale: "en",
         site: { name: "Published site" },
         navigation: [],
+        menus: {},
+        seo: { title: "Not found", noIndex: true },
         settings: {},
         title: "Not found",
       },
@@ -232,13 +254,15 @@ describe("createThemeContextResolver", () => {
 
   it("validates localized not-found headers against the content path", async () => {
     const fallback = {
-      contractVersion: "v1alpha1",
+      contractVersion: "v1alpha2",
       context: {
         kind: "notFound",
         path: "/404",
         locale: "fr",
         site: { name: "Published site" },
         navigation: [],
+        menus: {},
+        seo: { title: "Introuvable", noIndex: true },
         settings: {},
         title: "Introuvable",
       },
