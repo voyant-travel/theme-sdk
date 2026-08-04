@@ -8,6 +8,7 @@
   },
   "changesets": [
     "brave-themes-build",
+    "build-metadata-settings",
     "calm-sites-render",
     "context-memo-io-context",
     "early-themes-arrive",
