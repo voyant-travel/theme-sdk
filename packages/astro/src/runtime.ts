@@ -326,10 +326,20 @@ async function resolvePublishedContext(
 const CONTEXT_MEMO_LIMIT = 64;
 
 /**
- * Caching a resolved context across requests is safe because a publication is
- * an immutable snapshot: the id changes whenever the content does, so an entry
- * keyed by it can never go stale. Keying by release as well means a rollout
- * that reuses a publication id under a new release still resolves afresh.
+ * Only the settled context is ever kept, never the promise that produced it.
+ *
+ * A promise returned by `fetch` owns the request's I/O context, and Cloudflare
+ * Workers refuses to await one outside the request that created it. Caching the
+ * promise serves the first request an isolate sees and then throws "Cannot
+ * perform I/O on behalf of a different request" for every request after it — a
+ * 500 with an empty body, on a path local development never exercises, because
+ * fixtures resolve without any I/O at all.
+ *
+ * The settled value is plain parsed data with nothing attached to a request, so
+ * reusing it is safe. Keeping it across requests is sound because a publication
+ * is an immutable snapshot: its id changes whenever the content does, so an
+ * entry keyed by it cannot go stale. The release is in the key too, so a
+ * rollout that reuses a publication id under a new release resolves afresh.
  */
 function memoKey(bindings: VoyantPublicationBindings, input: string | URL) {
   return `${bindings.VOYANT_PUBLICATION_ID} ${bindings.VOYANT_THEME_RELEASE_ID} ${String(input)}`;
@@ -346,7 +356,7 @@ export function createThemeContextResolver(
     throw new Error(`Invalid Voyant theme:\n${summary}`);
   }
   const router = createFixtureRouter(checked.theme);
-  const memo = new Map<string, Promise<ThemePageContext>>();
+  const memo = new Map<string, ThemePageContext>();
   return async (input, runtimeEnv) => {
     const bindings = readPublicationBindings(runtimeEnv);
     if (!bindings) return router.resolve(input);
@@ -355,17 +365,14 @@ export function createThemeContextResolver(
     const memoized = memo.get(key);
     if (memoized) return memoized;
 
-    const pending = resolvePublishedContext(input, bindings);
-    memo.set(key, pending);
-    // A rejection must not be remembered, or one failed fetch would keep
-    // failing for every later request that lands on this isolate.
-    pending.catch(() => {
-      if (memo.get(key) === pending) memo.delete(key);
-    });
+    // Awaited before it is stored, so nothing request-scoped is ever cached. A
+    // failure simply leaves the entry absent rather than being remembered.
+    const context = await resolvePublishedContext(input, bindings);
+    memo.set(key, context);
     if (memo.size > CONTEXT_MEMO_LIMIT) {
       const oldest = memo.keys().next();
       if (!oldest.done) memo.delete(oldest.value);
     }
-    return pending;
+    return context;
   };
 }

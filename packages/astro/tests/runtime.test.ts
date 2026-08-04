@@ -346,6 +346,22 @@ describe("createThemeContextResolver", () => {
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 
+  it("lets concurrent resolutions of the same page each fetch", async () => {
+    // The cost of never caching a promise. Only the settled context is stored,
+    // so two resolutions that overlap both fetch, and neither can end up
+    // awaiting a promise that belongs to another request.
+    const fetch = vi.fn(async () => publishedResponse());
+    const resolve = createThemeContextResolver(theme);
+    const env = bindings(fetch);
+
+    await Promise.all([
+      resolve("https://north.example/stories/north", env),
+      resolve("https://north.example/stories/north", env),
+    ]);
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
   it("does not remember a failure", async () => {
     // Caching a rejection would keep failing every later request that landed
     // on this isolate, long after the cause had cleared.
