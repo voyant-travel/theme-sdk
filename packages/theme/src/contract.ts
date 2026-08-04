@@ -1,6 +1,46 @@
 import { z } from "zod";
 
-export const CONTRACT_VERSION = "v1alpha1" as const;
+/** The version a theme built against this release declares and requests. */
+export const CONTRACT_VERSION = "v1alpha2" as const;
+
+/**
+ * Envelope versions this release can read, newest last.
+ *
+ * A publication and a theme release are separately versioned artifacts with
+ * independent lifecycles — an operator publishes content far more often than
+ * they redeploy a theme — so a reader pinned to a single literal forces both to
+ * move in the same instant, and the storefront is down in between whichever
+ * order you pick. A theme therefore declares `CONTRACT_VERSION` when it asks
+ * and accepts any of these when it reads.
+ *
+ * This covers only the direction the SDK controls: a newer theme reading an
+ * older publication. A theme already deployed on an older SDK cannot be taught
+ * anything after the fact, so the platform must materialize each publication at
+ * the contract version of the release it is bound to rather than at whatever
+ * version the materializer was last shipped with.
+ */
+export const READABLE_CONTRACT_VERSIONS = [
+  "v1alpha1",
+  CONTRACT_VERSION,
+] as const;
+
+/*
+ * Context value objects are open; authoring objects are closed.
+ *
+ * Voyant owns the published context and grows it as the product grows, while a
+ * theme is an immutable release that may have been built months earlier. A
+ * closed context therefore makes every additive platform field a breaking
+ * change: the deployed theme rejects the whole response and the page fails. So
+ * anything Voyant emits parses permissively and keeps unknown keys, and a theme
+ * that ignores them still renders. Everything the theme author writes —
+ * manifest, routes, fields, tooling — stays strict, because there a stray key
+ * is a typo worth failing on.
+ *
+ * The envelope in `themeContextResponseSchema` is strict in shape for the same
+ * reason: it is the protocol frame, and a reader that changes it must be
+ * rejected rather than half-understood. Its version is the one field that
+ * admits a set, so that a release and a publication can cross over.
+ */
 
 export const localeSchema = z
   .string()
@@ -22,14 +62,14 @@ const identifier = z
   .min(1)
   .regex(/^[a-z][a-z0-9-]*$/, "Use lowercase letters, numbers, and hyphens.");
 
-export const imageSchema = z.strictObject({
+export const imageSchema = z.looseObject({
   src: z.string().min(1),
   alt: z.string(),
   width: z.number().int().positive().optional(),
   height: z.number().int().positive().optional(),
 });
 
-export const linkSchema = z.strictObject({
+export const linkSchema = z.looseObject({
   label: z.string().min(1),
   href: z.string().min(1),
 });
@@ -104,28 +144,81 @@ export const themeManifestSchema = z.strictObject({
   sections: z.array(themeSectionSchema).default([]),
 });
 
-const siteSchema = z.strictObject({
+export const siteSchema = z.looseObject({
   name: z.string().min(1),
   logo: imageSchema.optional(),
 });
 
 const navigationSchema = z.array(linkSchema);
 
+export interface ThemeMenuItem {
+  label: string;
+  href: string;
+  items?: ThemeMenuItem[];
+  [key: string]: unknown;
+}
+
+export const menuItemSchema: z.ZodType<ThemeMenuItem> = z.looseObject({
+  label: z.string().min(1),
+  href: z.string().min(1),
+  get items() {
+    return z.array(menuItemSchema).optional();
+  },
+});
+
+/**
+ * Menus are keyed by operator-chosen name — `primary` and `footer` are the
+ * conventional ones — so a new menu is content, not a contract change. The key
+ * space is deliberately unconstrained here; Voyant bounds menu count, item
+ * count, and nesting depth at publication time.
+ */
+export const menusSchema = z.record(z.string().min(1), z.array(menuItemSchema));
+
+export const seoSchema = z.looseObject({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  noIndex: z.boolean().default(false),
+});
+
+export const openGraphSchema = z.looseObject({
+  title: z.string().optional(),
+  description: z.string().optional(),
+  image: imageSchema.optional(),
+});
+
+/**
+ * Operator-supplied markup, verbatim. Voyant sanitizes and bounds it before it
+ * reaches a context; a theme's only job is to place each slot in the document
+ * where it belongs. Themes must not re-sanitize or re-encode it — escaping this
+ * is the same bug as trusting it, and both silently break analytics and consent
+ * tags operators depend on.
+ */
+export const codeInjectionSchema = z.looseObject({
+  head: z.string().optional(),
+  bodyStart: z.string().optional(),
+  bodyEnd: z.string().optional(),
+});
+
 const contextBase = {
   locale: localeSchema,
   site: siteSchema,
+  /** The primary menu flattened to one level, for themes that need no nesting. */
   navigation: navigationSchema.default([]),
+  menus: menusSchema.default({}),
+  seo: seoSchema,
+  openGraph: openGraphSchema.optional(),
+  codeInjection: codeInjectionSchema.optional(),
   settings: z.record(z.string(), z.unknown()).default({}),
 };
 
-export const homeContextSchema = z.strictObject({
+export const homeContextSchema = z.looseObject({
   ...contextBase,
   kind: z.literal("home"),
   path: z.literal("/"),
   title: z.string().min(1),
   sections: z
     .array(
-      z.strictObject({
+      z.looseObject({
         type: identifier,
         data: z.record(z.string(), z.unknown()),
       }),
@@ -133,7 +226,7 @@ export const homeContextSchema = z.strictObject({
     .default([]),
 });
 
-export const contentContextSchema = z.strictObject({
+export const contentContextSchema = z.looseObject({
   ...contextBase,
   kind: z.literal("content"),
   path: z.string().startsWith("/"),
@@ -143,7 +236,7 @@ export const contentContextSchema = z.strictObject({
   body: z.string(),
 });
 
-export const notFoundContextSchema = z.strictObject({
+export const notFoundContextSchema = z.looseObject({
   ...contextBase,
   kind: z.literal("notFound"),
   path: z.string().startsWith("/"),
@@ -157,11 +250,40 @@ export const themePageContextSchema = z.discriminatedUnion("kind", [
   notFoundContextSchema,
 ]);
 
-/** Wire response returned by the Voyant publication reader to a theme Worker. */
+/**
+ * Wire response returned by the Voyant publication reader to a theme Worker.
+ * Strict in shape on purpose: the frame is the version negotiation itself.
+ *
+ * Run `upgradeThemeContextResponse` over the raw body first. An older envelope
+ * is readable but not yet shaped like this one.
+ */
 export const themeContextResponseSchema = z.strictObject({
-  contractVersion: z.literal(CONTRACT_VERSION),
+  contractVersion: z.enum(READABLE_CONTRACT_VERSIONS),
   context: themePageContextSchema,
 });
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Brings an older envelope up to the current context shape.
+ *
+ * v1alpha1 had no `seo` object; a page's document title travelled as
+ * `context.title` and everything else it carried is already valid at v1alpha2.
+ * The fill is conditioned on the envelope version rather than on `seo` merely
+ * being absent, because at v1alpha2 a context without `seo` is a platform bug
+ * and still has to fail closed. Delete this when v1alpha1 is retired.
+ */
+export function upgradeThemeContextResponse(value: unknown): unknown {
+  if (!isRecord(value) || value.contractVersion !== "v1alpha1") return value;
+  const context = value.context;
+  if (!isRecord(context) || "seo" in context) return value;
+  if (typeof context.title !== "string") return value;
+  // The version is left as it arrived. Callers that log or meter publications
+  // should be able to see that a release read an older one.
+  return { ...value, context: { ...context, seo: { title: context.title } } };
+}
 
 export const themeFixturesSchema = z.strictObject({
   home: homeContextSchema,
@@ -182,6 +304,13 @@ export const themeDefinitionSchema = z.strictObject({
     .optional(),
 });
 
+export type ThemeImage = z.infer<typeof imageSchema>;
+export type ThemeLink = z.infer<typeof linkSchema>;
+export type ThemeSite = z.infer<typeof siteSchema>;
+export type ThemeMenus = z.infer<typeof menusSchema>;
+export type ThemeSeo = z.infer<typeof seoSchema>;
+export type ThemeOpenGraph = z.infer<typeof openGraphSchema>;
+export type ThemeCodeInjection = z.infer<typeof codeInjectionSchema>;
 export type ThemeField = z.infer<typeof themeFieldSchema>;
 export type ThemeSection = z.infer<typeof themeSectionSchema>;
 export type ThemeRoute = z.infer<typeof themeRouteSchema>;

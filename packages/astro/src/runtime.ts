@@ -3,9 +3,11 @@ import {
   checkThemeDefinition,
   createFixtureRouter,
   type ParsedThemeDefinition,
+  READABLE_CONTRACT_VERSIONS,
   type ThemeDefinition,
   type ThemePageContext,
   themeContextResponseSchema,
+  upgradeThemeContextResponse,
 } from "@voyant-travel/theme";
 
 export const PUBLICATION_BINDING_NAMES = [
@@ -271,12 +273,12 @@ async function resolvePublishedContext(
   }
 
   const parsed = themeContextResponseSchema.safeParse(
-    await readBoundedResponse(response),
+    upgradeThemeContextResponse(await readBoundedResponse(response)),
   );
   if (!parsed.success) {
     throw new ThemeRuntimeError(
       "THEME_CONTEXT_RESPONSE_INVALID",
-      "Voyant publication context does not match the v1alpha1 contract.",
+      `Voyant publication context does not match a readable theme contract (${READABLE_CONTRACT_VERSIONS.join(", ")}).`,
     );
   }
   const publicationLocale = response.headers.get(

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://schemas.voyant.travel/theme/v1alpha1/theme-field.schema.json",
+  "$id": "https://schemas.voyant.travel/theme/v1alpha2/theme-field.schema.json",
   "title": "Voyant alpha theme field",
-  "description": "Minimal v1alpha1 authoring vocabulary; not an exhaustive universal block model.",
+  "description": "Minimal v1alpha2 authoring vocabulary; not an exhaustive universal block model.",
   "oneOf": [
     { "$ref": "#/$defs/text" },
     { "$ref": "#/$defs/number" },

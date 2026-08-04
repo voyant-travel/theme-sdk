@@ -5,6 +5,28 @@
     "locale": "en",
     "site": { "name": "Northstar Travel" },
     "navigation": [{ "label": "Journal", "href": "/journal/hello-world" }],
+    "menus": {
+      "primary": [
+        {
+          "label": "Journal",
+          "href": "/journal/hello-world",
+          "items": [{ "label": "Hello, world", "href": "/journal/hello-world" }]
+        }
+      ],
+      "footer": [{ "label": "Home", "href": "/" }]
+    },
+    "seo": {
+      "title": "Go somewhere worth remembering",
+      "description": "A fixture-backed reference storefront.",
+      "noIndex": false
+    },
+    "openGraph": {
+      "title": "Northstar Travel",
+      "image": { "src": "/social.png", "alt": "Northstar Travel" }
+    },
+    "codeInjection": {
+      "head": "<meta name=\"fixture-code-injection\" content=\"head\" />"
+    },
     "settings": { "accent": "ocean" },
     "title": "Go somewhere worth remembering",
     "sections": [
@@ -19,6 +41,12 @@
       "locale": "en",
       "site": { "name": "Northstar Travel" },
       "navigation": [{ "label": "Home", "href": "/" }],
+      "menus": { "primary": [{ "label": "Home", "href": "/" }] },
+      "seo": {
+        "title": "Hello, world",
+        "description": "A fixture-backed content page.",
+        "noIndex": false
+      },
       "settings": { "accent": "ocean" },
       "title": "Hello, world",
       "summary": "A fixture-backed content page.",
@@ -31,6 +59,8 @@
     "locale": "en",
     "site": { "name": "Northstar Travel" },
     "navigation": [{ "label": "Home", "href": "/" }],
+    "menus": { "primary": [{ "label": "Home", "href": "/" }] },
+    "seo": { "title": "That trip is not on the map", "noIndex": true },
     "settings": { "accent": "ocean" },
     "title": "That trip is not on the map",
     "message": "Try returning home."
