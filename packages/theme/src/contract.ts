@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** The version a theme built against this release declares and requests. */
-export const CONTRACT_VERSION = "v1alpha2" as const;
+export const CONTRACT_VERSION = "v1alpha3" as const;
 
 /**
  * Envelope versions this release can read, newest last.
@@ -21,6 +21,7 @@ export const CONTRACT_VERSION = "v1alpha2" as const;
  */
 export const READABLE_CONTRACT_VERSIONS = [
   "v1alpha1",
+  "v1alpha2",
   CONTRACT_VERSION,
 ] as const;
 
@@ -143,7 +144,13 @@ export const themeSectionSchema = z.strictObject({
   fields: z.array(themeFieldSchema),
 });
 
-export const themeContextKindSchema = z.enum(["home", "content", "notFound"]);
+export const themeContextKindSchema = z.enum([
+  "home",
+  "content",
+  "notFound",
+  "collectionIndex",
+  "collectionEntry",
+]);
 
 export const themeRouteSchema = z.strictObject({
   id: identifier,
@@ -263,10 +270,55 @@ export const notFoundContextSchema = z.looseObject({
   message: z.string().optional(),
 });
 
+/**
+ * One entry of an operator-defined collection.
+ *
+ * `values` is keyed by the field ids the operator declared, so its shape is
+ * theirs rather than Voyant's and cannot be typed here. A theme reads the keys
+ * it knows about and ignores the rest, exactly as it does with settings.
+ *
+ * `path` is present only when the entry's collection is routable. Linking to an
+ * entry that has no page of its own would produce a 404 that looks deliberate,
+ * so a theme must check for it rather than assume it.
+ */
+export const collectionEntrySchema = z.looseObject({
+  id: identifier,
+  slug: z.string().min(1),
+  path: z.string().startsWith("/").optional(),
+  title: z.string().min(1),
+  values: z.record(z.string(), z.unknown()).default({}),
+});
+
+const collectionIdentitySchema = z.looseObject({
+  id: identifier,
+  name: z.string().min(1),
+});
+
+export const collectionIndexContextSchema = z.looseObject({
+  ...contextBase,
+  kind: z.literal("collectionIndex"),
+  path: z.string().startsWith("/"),
+  title: z.string().min(1),
+  collection: collectionIdentitySchema,
+  /** Declaration order, which is the order the operator arranged them in. */
+  entries: z.array(collectionEntrySchema).default([]),
+});
+
+export const collectionEntryContextSchema = z.looseObject({
+  ...contextBase,
+  kind: z.literal("collectionEntry"),
+  path: z.string().startsWith("/"),
+  title: z.string().min(1),
+  collection: collectionIdentitySchema,
+  entry: collectionEntrySchema,
+});
+
 export const themePageContextSchema = z.discriminatedUnion("kind", [
   homeContextSchema,
   contentContextSchema,
   notFoundContextSchema,
+  collectionIndexContextSchema,
+  collectionEntryContextSchema,
 ]);
 
 /**
@@ -337,6 +389,13 @@ export type ThemeManifest = z.infer<typeof themeManifestSchema>;
 export type HomeContext = z.infer<typeof homeContextSchema>;
 export type ContentContext = z.infer<typeof contentContextSchema>;
 export type NotFoundContext = z.infer<typeof notFoundContextSchema>;
+export type ThemeCollectionEntry = z.infer<typeof collectionEntrySchema>;
+export type CollectionIndexContext = z.infer<
+  typeof collectionIndexContextSchema
+>;
+export type CollectionEntryContext = z.infer<
+  typeof collectionEntryContextSchema
+>;
 export type ThemePageContext = z.infer<typeof themePageContextSchema>;
 export type ThemeContextResponse = z.infer<typeof themeContextResponseSchema>;
 export type ThemeDefinition = z.input<typeof themeDefinitionSchema>;
