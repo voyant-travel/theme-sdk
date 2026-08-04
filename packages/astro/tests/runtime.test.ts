@@ -9,7 +9,7 @@ import {
 } from "../src/runtime.js";
 
 const theme = {
-  contractVersion: "v1alpha2" as const,
+  contractVersion: "v1alpha3" as const,
   manifest: {
     id: "runtime-test",
     name: "Runtime test",
