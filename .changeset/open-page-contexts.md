@@ -16,6 +16,13 @@ the response envelope stays strict because it carries the version negotiation
 itself, and the theme-authored manifest stays strict because there an unknown
 key is a typo. Known fields keep their constraints.
 
+The reader also accepts more than one envelope version. A publication and a
+theme release are separately versioned artifacts, so a theme now declares
+`CONTRACT_VERSION` when it asks and accepts any of `READABLE_CONTRACT_VERSIONS`
+when it reads, upgrading an older envelope through
+`upgradeThemeContextResponse`. Without that, a release and a publication would
+have to move in the same instant and the storefront would fail in between.
+
 Contexts also carry the fields the platform already authored or needs:
 `seo` (`title`, `description?`, `noIndex`), optional `openGraph`, named and
 optionally nested `menus`, and optional `codeInjection` of raw operator markup

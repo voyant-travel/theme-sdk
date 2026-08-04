@@ -1,6 +1,28 @@
 import { z } from "zod";
 
+/** The version a theme built against this release declares and requests. */
 export const CONTRACT_VERSION = "v1alpha2" as const;
+
+/**
+ * Envelope versions this release can read, newest last.
+ *
+ * A publication and a theme release are separately versioned artifacts with
+ * independent lifecycles — an operator publishes content far more often than
+ * they redeploy a theme — so a reader pinned to a single literal forces both to
+ * move in the same instant, and the storefront is down in between whichever
+ * order you pick. A theme therefore declares `CONTRACT_VERSION` when it asks
+ * and accepts any of these when it reads.
+ *
+ * This covers only the direction the SDK controls: a newer theme reading an
+ * older publication. A theme already deployed on an older SDK cannot be taught
+ * anything after the fact, so the platform must materialize each publication at
+ * the contract version of the release it is bound to rather than at whatever
+ * version the materializer was last shipped with.
+ */
+export const READABLE_CONTRACT_VERSIONS = [
+  "v1alpha1",
+  CONTRACT_VERSION,
+] as const;
 
 /*
  * Context value objects are open; authoring objects are closed.
@@ -14,9 +36,10 @@ export const CONTRACT_VERSION = "v1alpha2" as const;
  * manifest, routes, fields, tooling — stays strict, because there a stray key
  * is a typo worth failing on.
  *
- * The envelope in `themeContextResponseSchema` is the exception: it is the
- * protocol frame, it is pinned to one contract version, and a reader that
- * changes it must be rejected rather than half-understood.
+ * The envelope in `themeContextResponseSchema` is strict in shape for the same
+ * reason: it is the protocol frame, and a reader that changes it must be
+ * rejected rather than half-understood. Its version is the one field that
+ * admits a set, so that a release and a publication can cross over.
  */
 
 export const localeSchema = z
@@ -229,12 +252,38 @@ export const themePageContextSchema = z.discriminatedUnion("kind", [
 
 /**
  * Wire response returned by the Voyant publication reader to a theme Worker.
- * Strict on purpose: the frame is the version negotiation itself.
+ * Strict in shape on purpose: the frame is the version negotiation itself.
+ *
+ * Run `upgradeThemeContextResponse` over the raw body first. An older envelope
+ * is readable but not yet shaped like this one.
  */
 export const themeContextResponseSchema = z.strictObject({
-  contractVersion: z.literal(CONTRACT_VERSION),
+  contractVersion: z.enum(READABLE_CONTRACT_VERSIONS),
   context: themePageContextSchema,
 });
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Brings an older envelope up to the current context shape.
+ *
+ * v1alpha1 had no `seo` object; a page's document title travelled as
+ * `context.title` and everything else it carried is already valid at v1alpha2.
+ * The fill is conditioned on the envelope version rather than on `seo` merely
+ * being absent, because at v1alpha2 a context without `seo` is a platform bug
+ * and still has to fail closed. Delete this when v1alpha1 is retired.
+ */
+export function upgradeThemeContextResponse(value: unknown): unknown {
+  if (!isRecord(value) || value.contractVersion !== "v1alpha1") return value;
+  const context = value.context;
+  if (!isRecord(context) || "seo" in context) return value;
+  if (typeof context.title !== "string") return value;
+  // The version is left as it arrived. Callers that log or meter publications
+  // should be able to see that a release read an older one.
+  return { ...value, context: { ...context, seo: { title: context.title } } };
+}
 
 export const themeFixturesSchema = z.strictObject({
   home: homeContextSchema,

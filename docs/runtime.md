@@ -55,7 +55,7 @@ The request contains:
 - `X-Voyant-Site-Id`;
 - `X-Voyant-Publication-Id`;
 - `X-Voyant-Theme-Release-Id`;
-- `X-Voyant-Theme-Contract-Version: v1alpha2`.
+- `X-Voyant-Theme-Contract-Version: v1alpha2`, the version the theme declares.
 
 The server-owned reader maps that scope to
 `themes/publications/{siteId}/{publicationId}/{releaseId}` and resolves context
@@ -63,14 +63,16 @@ objects under `contexts/{locale}/{path-key}.json`. The theme cannot choose an R2
 key or storage prefix.
 
 Successful reads return JSON shaped as
-`{ contractVersion: "v1alpha2", context: ThemePageContext }` and include
+`{ contractVersion, context: ThemePageContext }` and include
 `X-Voyant-Publication-Locale: <canonical BCP-47 locale>`. Context locales must
 be canonical BCP-47 tags, such as `en`, `en-US`, or `zh-Hant-TW`. The resolver
-caps the buffered response at 2 MiB, validates the strict envelope and the open
-context, requires the header to exactly equal `context.locale`, and only then
-verifies that the context path equals the requested path. Context fields the
-theme's SDK release predates are carried through rather than rejected; see
-[the contract](contract.md).
+caps the buffered response at 2 MiB, upgrades a readable older envelope,
+validates the strict envelope shape and the open context, requires the header to
+exactly equal `context.locale`, and only then verifies that the context path
+equals the requested path. Context fields the theme's SDK release predates are
+carried through rather than rejected, and an envelope from an older readable
+contract version still resolves, so a release and a publication do not have to
+move together; see [the contract](contract.md).
 
 For an unknown path, the reader may return a typed `notFound` envelope with HTTP
 404, `X-Voyant-Publication-Locale`,

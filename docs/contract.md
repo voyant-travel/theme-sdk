@@ -29,15 +29,42 @@ serve the page. So the two halves of the contract are validated differently:
 - **Authoring is closed.** The manifest, routes, fields, and tooling block stay
   strict, because there an unrecognized key is a typo in `theme.config.ts` and
   failing on it is the whole point of `voyant theme check`.
-- **The envelope is closed.** The production reader returns
-  `{ contractVersion: "v1alpha2", context }`. That frame carries the version
-  negotiation itself, so an unexpected envelope property, a different contract
-  version, a mismatched path, or an invalid context fails closed rather than
-  falling back to fixture content.
+- **The envelope is closed in shape.** The production reader returns
+  `{ contractVersion, context }`. That frame carries the version negotiation
+  itself, so an unexpected envelope property, an unreadable contract version, a
+  mismatched path, or an invalid context fails closed rather than falling back
+  to fixture content.
 
 Open contexts do not mean unvalidated ones. Known fields keep their
 constraints: a malformed locale, a missing `seo.title`, or an unknown `kind`
 still fails closed.
+
+## The overlap window
+
+A publication and a theme release are separately versioned artifacts with
+independent lifecycles. An operator publishes content far more often than they
+redeploy a theme, so the two cannot be required to move in the same instant —
+whichever order you pick, a hard cutover leaves the storefront failing in
+between.
+
+A theme therefore **declares one version and reads several**. It sends
+`CONTRACT_VERSION` on `X-Voyant-Theme-Contract-Version`, and accepts any
+envelope in `READABLE_CONTRACT_VERSIONS` on the way back. Reading an older
+envelope runs `upgradeThemeContextResponse` first, which fills what the older
+shape did not carry — for v1alpha1, `seo` from the document title that
+travelled as `context.title`. The fill is conditioned on the envelope version,
+not on the field merely being absent, so a v1alpha2 context without `seo` is
+still the platform bug it is and still fails closed.
+
+This covers only the direction the SDK controls: a **newer theme reading an
+older publication**. The reverse — an older deployed theme meeting a newer
+publication — cannot be fixed here, because that theme is running an SDK that
+shipped before the new version existed. The platform must therefore materialize
+each publication at the contract version of the theme release it is bound to.
+Publication objects are already stored per release
+(`themes/publications/{siteId}/{publicationId}/{releaseId}`) and every release
+record already carries its own `contractVersion`, so two releases of one site
+can legitimately hold different-version objects side by side.
 
 ## Context fields
 

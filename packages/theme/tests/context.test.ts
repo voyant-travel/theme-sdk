@@ -4,8 +4,10 @@ import {
   CONTRACT_VERSION,
   contentContextSchema,
   homeContextSchema,
+  READABLE_CONTRACT_VERSIONS,
   themeContextResponseSchema,
   themePageContextSchema,
+  upgradeThemeContextResponse,
 } from "../src/index.js";
 
 function homeContext(extra: Record<string, unknown> = {}) {
@@ -56,6 +58,41 @@ describe("published context forward compatibility", () => {
     expect(homeContextSchema.safeParse(future).success).toBe(true);
   });
 
+  it("reads the previous envelope so a release and a publication can cross over", () => {
+    // Exactly what a v1alpha1 publication object contains: no seo, no menus,
+    // the document title carried on context.title.
+    const { menus: _menus, seo: _seo, ...published } = homeContext();
+    const parsed = themeContextResponseSchema.parse(
+      upgradeThemeContextResponse({
+        contractVersion: "v1alpha1",
+        context: published,
+      }),
+    );
+
+    expect(parsed.contractVersion).toBe("v1alpha1");
+    expect(parsed.context.seo).toEqual({ title: "Home", noIndex: false });
+    expect(parsed.context.menus).toEqual({});
+  });
+
+  it("does not forgive a missing seo at the current version", () => {
+    const { seo: _seo, ...withoutSeo } = homeContext();
+    const response = { contractVersion: CONTRACT_VERSION, context: withoutSeo };
+
+    expect(upgradeThemeContextResponse(response)).toBe(response);
+    expect(themeContextResponseSchema.safeParse(response).success).toBe(false);
+  });
+
+  it("leaves an envelope it cannot upgrade alone rather than guessing", () => {
+    const { seo: _seo, ...withoutSeo } = homeContext();
+    const untitled = {
+      contractVersion: "v1alpha1",
+      context: { ...withoutSeo, title: 7 },
+    };
+
+    expect(upgradeThemeContextResponse(untitled)).toBe(untitled);
+    expect(themeContextResponseSchema.safeParse(untitled).success).toBe(false);
+  });
+
   it("keeps the response envelope closed so a reader cannot change the frame", () => {
     expect(
       themeContextResponseSchema.safeParse({
@@ -64,12 +101,14 @@ describe("published context forward compatibility", () => {
         cacheHint: "public",
       }).success,
     ).toBe(false);
+    // Readable versions are an explicit list, not "anything that parses".
     expect(
       themeContextResponseSchema.safeParse({
-        contractVersion: "v1alpha1",
+        contractVersion: "v1alpha3",
         context: homeContext(),
       }).success,
     ).toBe(false);
+    expect(READABLE_CONTRACT_VERSIONS).toContain(CONTRACT_VERSION);
   });
 
   it("still rejects a context whose known fields are wrong", () => {

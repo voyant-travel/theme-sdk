@@ -65,8 +65,11 @@ function publishedContext(path = "/stories/north") {
 }
 
 function publishedResponse(
-  body = publishedContext(),
-  locale = body.context.locale,
+  body: {
+    contractVersion: string;
+    context: Record<string, unknown>;
+  } = publishedContext(),
+  locale = String(body.context.locale),
 ) {
   return Response.json(body, {
     headers: { [PUBLICATION_RESPONSE_HEADERS.locale]: locale },
@@ -147,6 +150,26 @@ describe("createThemeContextResolver", () => {
         bindings(async () => publishedResponse(grown)),
       ),
     ).resolves.toMatchObject({ kind: "content", readingMinutes: 4 });
+  });
+
+  it("serves a publication materialized before this release existed", async () => {
+    // A site whose theme has been redeployed but whose content has not been
+    // republished: v1alpha1 objects, no seo, title carrying the document title.
+    const published = publishedContext();
+    const { menus: _menus, seo: _seo, ...legacyContext } = published.context;
+    const legacy = { contractVersion: "v1alpha1", context: legacyContext };
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(
+      resolve(
+        "https://north.example/stories/north?locale=en",
+        bindings(async () => publishedResponse(legacy)),
+      ),
+    ).resolves.toMatchObject({
+      kind: "content",
+      seo: { title: "Published story", noIndex: false },
+      menus: {},
+    });
   });
 
   it("matches a localized public URL to its locale-independent context path", async () => {

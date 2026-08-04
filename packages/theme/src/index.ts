@@ -15,6 +15,7 @@ export {
   notFoundContextSchema,
   openGraphSchema,
   type ParsedThemeDefinition,
+  READABLE_CONTRACT_VERSIONS,
   seoSchema,
   siteSchema,
   type ThemeCodeInjection,
@@ -41,6 +42,7 @@ export {
   themePageContextSchema,
   themeRouteSchema,
   themeSectionSchema,
+  upgradeThemeContextResponse,
 } from "./contract.js";
 export {
   type DiagnosticSeverity,
