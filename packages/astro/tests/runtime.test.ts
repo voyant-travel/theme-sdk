@@ -317,4 +317,51 @@ describe("createThemeContextResolver", () => {
       "VOYANT_THEME_RELEASE_ID",
     ]);
   });
+
+  it("fetches one context when the same page is resolved twice", async () => {
+    // The page resolves its own context and the injection middleware resolves
+    // it again after rendering. That must cost one fetch, not two.
+    const fetch = vi.fn(async () => publishedResponse());
+    const resolve = createThemeContextResolver(theme);
+    const env = bindings(fetch);
+
+    await resolve("https://north.example/stories/north", env);
+    await resolve("https://north.example/stories/north", env);
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves a different publication separately", async () => {
+    // A publication is immutable, so its id is what makes an entry reusable.
+    // A new publication must never be answered from the previous one.
+    const fetch = vi.fn(async () => publishedResponse());
+    const resolve = createThemeContextResolver(theme);
+
+    await resolve("https://north.example/stories/north", bindings(fetch));
+    await resolve("https://north.example/stories/north", {
+      ...bindings(fetch),
+      VOYANT_PUBLICATION_ID: "pub_next",
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not remember a failure", async () => {
+    // Caching a rejection would keep failing every later request that landed
+    // on this isolate, long after the cause had cleared.
+    const fetch = vi
+      .fn<VoyantPublicationBindings["PUBLICATION"]["fetch"]>()
+      .mockRejectedValueOnce(new Error("unreachable"))
+      .mockResolvedValueOnce(publishedResponse());
+    const resolve = createThemeContextResolver(theme);
+    const env = bindings(fetch);
+
+    await expect(
+      resolve("https://north.example/stories/north", env),
+    ).rejects.toMatchObject({ code: "THEME_CONTEXT_FETCH_FAILED" });
+    await expect(
+      resolve("https://north.example/stories/north", env),
+    ).resolves.toMatchObject({ kind: "content" });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
 });

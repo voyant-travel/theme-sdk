@@ -318,6 +318,23 @@ async function resolvePublishedContext(
   return parsed.data.context;
 }
 
+/**
+ * How many resolved contexts one isolate keeps. Small on purpose: this exists
+ * so that two resolutions of the same page within a request cost one fetch,
+ * not to be a page cache.
+ */
+const CONTEXT_MEMO_LIMIT = 64;
+
+/**
+ * Caching a resolved context across requests is safe because a publication is
+ * an immutable snapshot: the id changes whenever the content does, so an entry
+ * keyed by it can never go stale. Keying by release as well means a rollout
+ * that reuses a publication id under a new release still resolves afresh.
+ */
+function memoKey(bindings: VoyantPublicationBindings, input: string | URL) {
+  return `${bindings.VOYANT_PUBLICATION_ID} ${bindings.VOYANT_THEME_RELEASE_ID} ${String(input)}`;
+}
+
 export function createThemeContextResolver(
   theme: ThemeDefinition | ParsedThemeDefinition,
 ): ThemeContextResolver {
@@ -329,10 +346,26 @@ export function createThemeContextResolver(
     throw new Error(`Invalid Voyant theme:\n${summary}`);
   }
   const router = createFixtureRouter(checked.theme);
+  const memo = new Map<string, Promise<ThemePageContext>>();
   return async (input, runtimeEnv) => {
     const bindings = readPublicationBindings(runtimeEnv);
-    return bindings
-      ? resolvePublishedContext(input, bindings)
-      : router.resolve(input);
+    if (!bindings) return router.resolve(input);
+
+    const key = memoKey(bindings, input);
+    const memoized = memo.get(key);
+    if (memoized) return memoized;
+
+    const pending = resolvePublishedContext(input, bindings);
+    memo.set(key, pending);
+    // A rejection must not be remembered, or one failed fetch would keep
+    // failing for every later request that lands on this isolate.
+    pending.catch(() => {
+      if (memo.get(key) === pending) memo.delete(key);
+    });
+    if (memo.size > CONTEXT_MEMO_LIMIT) {
+      const oldest = memo.keys().next();
+      if (!oldest.done) memo.delete(oldest.value);
+    }
+    return pending;
   };
 }

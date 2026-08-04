@@ -26,4 +26,8 @@ have to move in the same instant and the storefront would fail in between.
 Contexts also carry the fields the platform already authored or needs:
 `seo` (`title`, `description?`, `noIndex`), optional `openGraph`, named and
 optionally nested `menus`, and optional `codeInjection` of raw operator markup
-that Voyant sanitizes and themes place verbatim.
+placed verbatim. That markup is not sanitized and cannot be: executing it is
+the entire point of the field, since it carries the analytics, consent and
+verification tags an operator needs. It is constrained instead — bounded in
+size and rejected if it contains control characters — and confined to the
+operator's own document.
