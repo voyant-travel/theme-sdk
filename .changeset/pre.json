@@ -8,6 +8,7 @@
   },
   "changesets": [
     "brave-themes-build",
+    "build-metadata-content-bindings",
     "build-metadata-settings",
     "calm-sites-render",
     "collection-contexts",
