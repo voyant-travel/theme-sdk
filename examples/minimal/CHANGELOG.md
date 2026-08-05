@@ -1,5 +1,12 @@
 # @voyant-travel/example-theme
 
+## 0.0.1-alpha.9
+
+### Patch Changes
+
+- Updated dependencies [19c1c13]
+  - @voyant-travel/theme@0.1.0-alpha.9
+
 ## 0.0.1-alpha.8
 
 ### Patch Changes

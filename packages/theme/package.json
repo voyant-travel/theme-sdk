@@ -1,6 +1,6 @@
 {
   "name": "@voyant-travel/theme",
-  "version": "0.1.0-alpha.8",
+  "version": "0.1.0-alpha.9",
   "description": "The public contract and local tooling for Voyant storefront themes.",
   "license": "Apache-2.0",
   "repository": {
