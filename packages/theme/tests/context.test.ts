@@ -302,4 +302,43 @@ describe("collection contexts", () => {
 
     expect(empty.entries).toEqual([]);
   });
+
+  it("carries the operator's field labels in the order they declared them", () => {
+    const index = collectionIndexContextSchema.parse({
+      ...collectionContextBase(),
+      kind: "collectionIndex",
+      path: "/guides",
+      title: "Travel guides",
+      collection: {
+        id: "guides",
+        name: "Travel guides",
+        fields: [
+          { id: "summary", label: "Summary", type: "text" },
+          { id: "author", label: "Written by", type: "reference" },
+        ],
+      },
+      entries: [collectionEntry()],
+    });
+
+    // Order is the operator's, not alphabetical: `summary` sorts after
+    // `author` and must still come first.
+    expect(index.collection.fields?.map((field) => field.label)).toEqual([
+      "Summary",
+      "Written by",
+    ]);
+  });
+
+  it("reads a publication that predates field definitions", () => {
+    const index = collectionIndexContextSchema.parse({
+      ...collectionContextBase(),
+      kind: "collectionIndex",
+      path: "/guides",
+      title: "Travel guides",
+      entries: [collectionEntry()],
+    });
+
+    // Absent rather than empty, so a theme can tell "no definitions were
+    // published" from "this collection declares no fields" and fall back.
+    expect(index.collection.fields).toBeUndefined();
+  });
 });
