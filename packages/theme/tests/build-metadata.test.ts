@@ -97,6 +97,46 @@ describe("createThemeBuildMetadata", () => {
     ]);
   });
 
+  it("carries the content bindings a theme declares, after settings", async () => {
+    // Without this the declaration reaches the build and stops: the platform
+    // reads these to decide whether an operator's mapping satisfies the theme,
+    // so a theme could declare a required slot and the check would pass
+    // against an empty declaration.
+    const theme = validTheme();
+    theme.manifest.settings = [
+      { id: "brand-color", label: "Brand colour", type: "text" },
+    ];
+    theme.manifest.contentBindings = [
+      {
+        id: "guides",
+        name: "Travel guides",
+        fields: [
+          { id: "summary", label: "Summary", type: "text", required: true },
+        ],
+      },
+    ];
+    const checked = checkThemeDefinition(theme);
+    const root = await mkdtemp(path.join(tmpdir(), "voyant-bindings-"));
+    if (!checked.theme) throw new Error("Test setup failed.");
+    await mkdir(path.join(root, "dist"), { recursive: true });
+    await writeFile(path.join(root, "dist", "index.html"), "home");
+
+    const metadata = await createThemeBuildMetadata({
+      projectRoot: root,
+      outputDirectory: "dist",
+      theme: checked.theme,
+    });
+
+    expect(metadata.contentBindings?.[0]?.fields[0]?.required).toBe(true);
+    // The position is part of what the digest commits to, and the platform
+    // rebuilds the object in this order to verify it.
+    const keys = Object.keys(metadata);
+    expect(keys.indexOf("contentBindings")).toBe(keys.indexOf("settings") + 1);
+    expect(keys.indexOf("outputDirectory")).toBe(
+      keys.indexOf("contentBindings") + 1,
+    );
+  });
+
   it("accepts a colour setting and rejects a default that is not one", async () => {
     // A host renders this as a swatch picker, so the default has to be a value
     // a picker can show. Accepting `rebeccapurple` or `oklch(...)` would mean
