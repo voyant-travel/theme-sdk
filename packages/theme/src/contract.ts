@@ -289,9 +289,46 @@ export const collectionEntrySchema = z.looseObject({
   values: z.record(z.string(), z.unknown()).default({}),
 });
 
+/**
+ * One field an operator declared on a collection.
+ *
+ * `values` on an entry is a record, so it carries neither the operator's wording
+ * for a field nor the order they arranged the fields in. A theme given only the
+ * record has to invent both — humanize the id and sort the keys — and then an
+ * operator who labels a field "Written by" and puts it second sees "Author"
+ * first, with no way to tell the theme otherwise. These definitions are what
+ * make an entry presentable the way it was authored.
+ *
+ * `type` is here so a theme can choose a presentation from what the field IS
+ * rather than guessing from the shape of one value, which misreads an empty
+ * collection, a blank field, and a reference whose target has no translation.
+ */
+export const collectionFieldSchema = z.looseObject({
+  id: identifier,
+  label: z.string().min(1),
+  type: z.enum([
+    "text",
+    "richText",
+    "number",
+    "boolean",
+    "date",
+    "image",
+    "select",
+    "reference",
+  ]),
+});
+
 const collectionIdentitySchema = z.looseObject({
   id: identifier,
   name: z.string().min(1),
+  /**
+   * Declaration order, which is the operator's order.
+   *
+   * Optional because a publication materialized before this shipped carries no
+   * definitions, and those snapshots stay readable — a theme falls back to the
+   * keys of `values` for as long as one is live.
+   */
+  fields: z.array(collectionFieldSchema).optional(),
 });
 
 export const collectionIndexContextSchema = z.looseObject({
@@ -390,6 +427,7 @@ export type HomeContext = z.infer<typeof homeContextSchema>;
 export type ContentContext = z.infer<typeof contentContextSchema>;
 export type NotFoundContext = z.infer<typeof notFoundContextSchema>;
 export type ThemeCollectionEntry = z.infer<typeof collectionEntrySchema>;
+export type ThemeCollectionField = z.infer<typeof collectionFieldSchema>;
 export type CollectionIndexContext = z.infer<
   typeof collectionIndexContextSchema
 >;
