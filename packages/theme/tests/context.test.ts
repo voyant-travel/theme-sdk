@@ -8,6 +8,7 @@ import {
   homeContextSchema,
   READABLE_CONTRACT_VERSIONS,
   themeContextResponseSchema,
+  themeManifestSchema,
   themePageContextSchema,
   upgradeThemeContextResponse,
 } from "../src/index.js";
@@ -340,5 +341,67 @@ describe("collection contexts", () => {
     // Absent rather than empty, so a theme can tell "no definitions were
     // published" from "this collection declares no fields" and fall back.
     expect(index.collection.fields).toBeUndefined();
+  });
+});
+
+describe("content bindings", () => {
+  it("declares the slots a theme renders, independent of any site's field ids", () => {
+    const manifest = themeManifestSchema.parse({
+      id: "bucharest",
+      name: "Bucharest",
+      version: "1.0.0",
+      routes: [{ id: "home", pattern: "/", context: "home" }],
+      contentBindings: [
+        {
+          id: "guides",
+          name: "Travel guides",
+          fields: [
+            { id: "summary", label: "Summary", type: "text", required: true },
+            { id: "hero", label: "Hero image", type: "image" },
+          ],
+        },
+      ],
+    });
+
+    expect(manifest.contentBindings[0]?.fields.map((f) => f.id)).toEqual([
+      "summary",
+      "hero",
+    ]);
+    expect(manifest.contentBindings[0]?.fields[0]?.required).toBe(true);
+  });
+
+  it("defaults to no bindings so a theme that declares none still parses", () => {
+    const manifest = themeManifestSchema.parse({
+      id: "bucharest",
+      name: "Bucharest",
+      version: "1.0.0",
+      routes: [{ id: "home", pattern: "/", context: "home" }],
+    });
+    expect(manifest.contentBindings).toEqual([]);
+  });
+
+  it("carries projected slot values on an entry, beside the operator's own", () => {
+    const entry = collectionEntrySchema.parse({
+      id: "delta",
+      slug: "delta",
+      title: "The Danube delta",
+      values: { abstract: "Channels and reed beds." },
+      binding: { summary: "Channels and reed beds." },
+    });
+
+    // The theme reads the slot; the operator's id stays available for a theme
+    // rendering its own collections rather than a bound one.
+    expect(entry.binding?.summary).toBe("Channels and reed beds.");
+    expect(entry.values.abstract).toBe("Channels and reed beds.");
+  });
+
+  it("leaves binding absent for an unbound collection", () => {
+    const entry = collectionEntrySchema.parse({
+      id: "delta",
+      slug: "delta",
+      title: "The Danube delta",
+      values: {},
+    });
+    expect(entry.binding).toBeUndefined();
   });
 });

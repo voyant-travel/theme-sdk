@@ -158,6 +158,47 @@ export const themeRouteSchema = z.strictObject({
   context: themeContextKindSchema,
 });
 
+/**
+ * A collection shape a theme needs, named by the theme rather than by the site.
+ *
+ * A shared theme cannot know what an operator called their fields. One site's
+ * guides carry `abstract`, another's carry `intro`, and a theme that read either
+ * id directly would work on exactly one site. A binding inverts that: the theme
+ * declares the slots it renders — `summary`, `hero`, `author` — and the operator
+ * maps their own fields onto them once, at installation. The theme then reads
+ * `entry.binding.summary` and never learns the field id behind it.
+ *
+ * `required` marks a slot the theme cannot render without. Publishing a site
+ * whose mapping leaves one unfilled is rejected, because the alternative is a
+ * page that renders blank where its content should be.
+ */
+export const themeContentBindingSchema = z.strictObject({
+  id: identifier,
+  /** Operator-facing, shown beside the mapping controls. */
+  name: z.string().min(1),
+  description: z.string().optional(),
+  fields: z
+    .array(
+      z.strictObject({
+        id: identifier,
+        label: z.string().min(1),
+        type: z.enum([
+          "text",
+          "richText",
+          "number",
+          "boolean",
+          "date",
+          "image",
+          "select",
+          "reference",
+        ]),
+        required: z.boolean().optional(),
+      }),
+    )
+    .max(50)
+    .default([]),
+});
+
 export const themeManifestSchema = z.strictObject({
   id: identifier,
   name: z.string().min(1),
@@ -168,6 +209,7 @@ export const themeManifestSchema = z.strictObject({
   routes: z.array(themeRouteSchema).min(1),
   settings: z.array(themeFieldSchema).default([]),
   sections: z.array(themeSectionSchema).default([]),
+  contentBindings: z.array(themeContentBindingSchema).max(20).default([]),
 });
 
 export const siteSchema = z.looseObject({
@@ -287,6 +329,13 @@ export const collectionEntrySchema = z.looseObject({
   path: z.string().startsWith("/").optional(),
   title: z.string().min(1),
   values: z.record(z.string(), z.unknown()).default({}),
+  /**
+   * The operator's values projected onto the slots a binding declares, present
+   * only when this collection is mapped to one. Reading `binding.summary` is
+   * what lets one theme render two sites that named the field differently;
+   * `values` remains available for a theme rendering its own collections.
+   */
+  binding: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**
@@ -428,6 +477,7 @@ export type ContentContext = z.infer<typeof contentContextSchema>;
 export type NotFoundContext = z.infer<typeof notFoundContextSchema>;
 export type ThemeCollectionEntry = z.infer<typeof collectionEntrySchema>;
 export type ThemeCollectionField = z.infer<typeof collectionFieldSchema>;
+export type ThemeContentBinding = z.infer<typeof themeContentBindingSchema>;
 export type CollectionIndexContext = z.infer<
   typeof collectionIndexContextSchema
 >;
