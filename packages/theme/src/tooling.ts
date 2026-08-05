@@ -63,6 +63,14 @@ export interface ThemeBuildMetadata {
    * `context.settings`.
    */
   settings: ParsedThemeDefinition["manifest"]["settings"];
+  /**
+   * The collection shapes the theme binds to, carried for the same reason as
+   * settings: without this the declaration reaches the build and stops. The
+   * platform reads them to decide whether an operator's mapping satisfies the
+   * theme, so a theme could declare a required slot and the check would pass
+   * against nothing.
+   */
+  contentBindings: ParsedThemeDefinition["manifest"]["contentBindings"];
   outputDirectory: string;
   runtime: ThemeBuildRuntime | null;
   files: ThemeBuildFile[];
@@ -488,6 +496,11 @@ export async function createThemeBuildMetadata(options: {
     // settings the way it wants them presented, and sorting them by id would
     // scatter a deliberate grouping.
     settings: options.theme.manifest.settings,
+    // Placed between settings and outputDirectory, matching the position the
+    // platform rebuilds it in. The digest is taken over JSON.stringify of this
+    // object, so the position is part of what the build commits to and moving
+    // it would fail verification with identical content.
+    contentBindings: options.theme.manifest.contentBindings,
     outputDirectory: normalizedOutput,
     runtime,
     files,
