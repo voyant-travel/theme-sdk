@@ -19,6 +19,7 @@
     "early-themes-arrive",
     "open-page-contexts",
     "render-code-injection",
-    "sorted-build-paths"
+    "sorted-build-paths",
+    "visual-editor-contract"
   ]
 }
