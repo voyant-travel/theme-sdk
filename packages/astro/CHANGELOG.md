@@ -1,5 +1,18 @@
 # @voyant-travel/astro
 
+## 0.1.0-alpha.13
+
+### Minor Changes
+
+- 773ddfa: Declare visual-editor sections, blocks, presets and controls in theme build
+  metadata, and add draft-only stega provenance helpers plus the origin-pinned
+  Astro editor bridge.
+
+### Patch Changes
+
+- Updated dependencies [773ddfa]
+  - @voyant-travel/theme@0.1.0-alpha.13
+
 ## 0.1.0-alpha.6
 
 ### Patch Changes
