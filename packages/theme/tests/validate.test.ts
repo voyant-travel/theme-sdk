@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { checkThemeDefinition, localeSchema } from "../src/index.js";
+import {
+  checkThemeDefinition,
+  localeSchema,
+  THEME_CAPABILITY_IDS,
+  themeManifestSchema,
+} from "../src/index.js";
 import { validTheme } from "./helpers.js";
 
 describe("checkThemeDefinition", () => {
@@ -192,5 +197,127 @@ describe("checkThemeDefinition", () => {
       },
     ] as typeof theme.manifest.sections;
     expect(checkThemeDefinition(theme).ok).toBe(true);
+  });
+
+  it("accepts every stable capability id and defaults declarations to required", () => {
+    const manifest = themeManifestSchema.parse({
+      id: "selling-theme",
+      name: "Selling theme",
+      version: "1.0.0",
+      routes: [{ id: "home", pattern: "/", context: "home" }],
+      capabilities: THEME_CAPABILITY_IDS.map((id) => ({ id })),
+    });
+
+    expect(manifest.capabilities).toEqual(
+      THEME_CAPABILITY_IDS.map((id) => ({ id, required: true })),
+    );
+  });
+
+  it("keeps capability authoring strict", () => {
+    const base = {
+      id: "selling-theme",
+      name: "Selling theme",
+      version: "1.0.0",
+      routes: [{ id: "home", pattern: "/", context: "home" }],
+    };
+    expect(
+      themeManifestSchema.safeParse({
+        ...base,
+        capabilities: [{ id: "catalog.unknown.v1" }],
+      }).success,
+    ).toBe(false);
+    expect(
+      themeManifestSchema.safeParse({
+        ...base,
+        capabilities: [
+          { id: "catalog.search.v1", endpoint: "https://example.test" },
+        ],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects duplicate capability declarations", () => {
+    const theme = validTheme();
+    theme.manifest.capabilities = [
+      { id: "catalog.search.v1" },
+      { id: "catalog.search.v1", required: false },
+    ];
+    expect(checkThemeDefinition(theme).diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "THEME_IDENTIFIER_DUPLICATE",
+        path: "$.manifest.capabilities",
+      }),
+    );
+  });
+
+  it("accepts the paired canonical tour routes", () => {
+    const theme = validTheme();
+    theme.manifest.routes.push(
+      { id: "tours", pattern: "/tours", context: "tourIndex" },
+      {
+        id: "tour-detail",
+        pattern: "/tours/[slug]",
+        context: "tourDetail",
+      },
+    );
+    expect(checkThemeDefinition(theme).diagnostics).toEqual([]);
+  });
+
+  it.each([
+    {
+      route: { id: "tours", pattern: "/trips", context: "tourIndex" },
+      code: "THEME_TOUR_ROUTE_NON_CANONICAL",
+    },
+    {
+      route: {
+        id: "tour-detail",
+        pattern: "/tours/[tour]",
+        context: "tourDetail",
+      },
+      code: "THEME_TOUR_ROUTE_NON_CANONICAL",
+    },
+  ] as const)("rejects a non-canonical $route.context route", ({
+    route,
+    code,
+  }) => {
+    const theme = validTheme();
+    theme.manifest.routes.push(route);
+    expect(checkThemeDefinition(theme).diagnostics).toContainEqual(
+      expect.objectContaining({ code }),
+    );
+  });
+
+  it("requires tour index and detail routes as a pair", () => {
+    const theme = validTheme();
+    theme.manifest.routes.push({
+      id: "tours",
+      pattern: "/tours",
+      context: "tourIndex",
+    });
+    expect(checkThemeDefinition(theme).diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "THEME_TOUR_ROUTE_REQUIRED",
+        message: expect.stringContaining("tourDetail"),
+      }),
+    );
+  });
+
+  it.each([
+    "/tours/[id]",
+    "/[...path]",
+  ])("rejects a route that overlaps the canonical tour routes: %s", (pattern) => {
+    const theme = validTheme();
+    theme.manifest.routes.push(
+      { id: "tours", pattern: "/tours", context: "tourIndex" },
+      {
+        id: "tour-detail",
+        pattern: "/tours/[slug]",
+        context: "tourDetail",
+      },
+      { id: "collision", pattern, context: "content" },
+    );
+    expect(checkThemeDefinition(theme).diagnostics).toContainEqual(
+      expect.objectContaining({ code: "THEME_TOUR_ROUTE_COLLISION" }),
+    );
   });
 });

@@ -73,6 +73,8 @@ export interface ThemeBuildMetadata {
    * against nothing.
    */
   contentBindings: ParsedThemeDefinition["manifest"]["contentBindings"];
+  /** Stable live operations this immutable theme release knows how to call. */
+  capabilities: ParsedThemeDefinition["manifest"]["capabilities"];
   outputDirectory: string;
   runtime: ThemeBuildRuntime | null;
   files: ThemeBuildFile[];
@@ -537,6 +539,10 @@ export async function createThemeBuildMetadata(options: {
     // object, so the position is part of what the build commits to and moving
     // it would fail verification with identical content.
     contentBindings: options.theme.manifest.contentBindings,
+    // Capabilities are authoring declarations, not resolved endpoints. They are
+    // carried into the artifact so the platform can resolve a secret-free live
+    // envelope for the publication.
+    capabilities: options.theme.manifest.capabilities,
     outputDirectory: normalizedOutput,
     runtime,
     files,

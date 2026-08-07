@@ -101,6 +101,37 @@ function settingDiagnostics(
   return diagnostics;
 }
 
+function routeSegments(pattern: string): string[] {
+  return pattern.split("/").filter(Boolean);
+}
+
+function isDynamicSegment(segment: string): boolean {
+  return /^\[[A-Za-z][A-Za-z0-9_]*\]$/.test(segment);
+}
+
+function isRestSegment(segment: string): boolean {
+  return /^\[\.\.\.[A-Za-z][A-Za-z0-9_]*\]$/.test(segment);
+}
+
+/** Whether two Astro patterns can resolve the same public path. */
+function routePatternsOverlap(left: string, right: string): boolean {
+  const a = routeSegments(left);
+  const b = routeSegments(right);
+  const length = Math.max(a.length, b.length);
+  for (let index = 0; index < length; index += 1) {
+    const aPart = a[index];
+    const bPart = b[index];
+    if (aPart === undefined || bPart === undefined) {
+      const remaining = aPart ?? bPart;
+      return remaining !== undefined && isRestSegment(remaining);
+    }
+    if (isRestSegment(aPart) || isRestSegment(bPart)) return true;
+    if (isDynamicSegment(aPart) || isDynamicSegment(bPart)) continue;
+    if (aPart !== bPart) return false;
+  }
+  return true;
+}
+
 export function checkThemeDefinition(
   input: unknown,
   sourceFile = "theme.config.ts",
@@ -131,6 +162,12 @@ export function checkThemeDefinition(
       manifest.settings.map((field) => field.id),
       "$.manifest.settings",
       "Setting",
+      sourceFile,
+    ),
+    ...duplicateDiagnostics(
+      manifest.capabilities.map((capability) => capability.id),
+      "$.manifest.capabilities",
+      "Capability",
       sourceFile,
     ),
     ...settingDiagnostics(manifest.settings, "$.manifest.settings", sourceFile),
@@ -177,6 +214,26 @@ export function checkThemeDefinition(
       });
     } else patterns.set(route.pattern, index);
 
+    const canonicalPattern =
+      route.context === "tourIndex"
+        ? "/tours"
+        : route.context === "tourDetail"
+          ? "/tours/[slug]"
+          : undefined;
+    if (canonicalPattern && route.pattern !== canonicalPattern) {
+      diagnostics.push({
+        code: "THEME_TOUR_ROUTE_NON_CANONICAL",
+        message: `${route.context} must use the canonical route '${canonicalPattern}'.`,
+        severity: "error",
+        path: `$.manifest.routes[${index}].pattern`,
+        hint: `Use '${canonicalPattern}' exactly.`,
+        source: {
+          file: sourceFile,
+          path: ["manifest", "routes", index, "pattern"],
+        },
+      });
+    }
+
     if (
       route.context === "content" &&
       !/\[(?:\.\.\.)?[A-Za-z][A-Za-z0-9_]*\]/.test(route.pattern)
@@ -194,6 +251,49 @@ export function checkThemeDefinition(
       });
     }
   });
+
+  const tourRoutes = manifest.routes.filter(
+    (route) => route.context === "tourIndex" || route.context === "tourDetail",
+  );
+  if (tourRoutes.length > 0) {
+    for (const kind of ["tourIndex", "tourDetail"] as const) {
+      const matches = tourRoutes.filter((route) => route.context === kind);
+      if (matches.length !== 1) {
+        diagnostics.push({
+          code: "THEME_TOUR_ROUTE_REQUIRED",
+          message: `Exactly one ${kind} route is required when a tour route is declared; found ${matches.length}.`,
+          severity: "error",
+          path: "$.manifest.routes",
+          source: { file: sourceFile, path: ["manifest", "routes"] },
+        });
+      }
+    }
+
+    for (const [index, route] of manifest.routes.entries()) {
+      for (const [, other] of manifest.routes.slice(0, index).entries()) {
+        if (
+          route.pattern !== other.pattern &&
+          routePatternsOverlap(route.pattern, other.pattern) &&
+          (route.context === "tourIndex" ||
+            route.context === "tourDetail" ||
+            other.context === "tourIndex" ||
+            other.context === "tourDetail")
+        ) {
+          diagnostics.push({
+            code: "THEME_TOUR_ROUTE_COLLISION",
+            message: `Route pattern '${route.pattern}' overlaps tour route '${other.pattern}'.`,
+            severity: "error",
+            path: `$.manifest.routes[${index}].pattern`,
+            hint: "Reserve /tours and /tours/[slug] for their canonical tour contexts.",
+            source: {
+              file: sourceFile,
+              path: ["manifest", "routes", index, "pattern"],
+            },
+          });
+        }
+      }
+    }
+  }
 
   for (const [sectionIndex, section] of manifest.sections.entries()) {
     diagnostics.push(

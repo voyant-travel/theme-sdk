@@ -4,7 +4,7 @@ import fixtures from "../../fixtures/minimal.json";
 const parsedFixtures = themeFixturesSchema.parse(fixtures);
 
 export default defineTheme({
-  contractVersion: "v1alpha3",
+  contractVersion: "v1alpha4",
   manifest: {
     id: "minimal",
     name: "Minimal Voyant Theme",
@@ -17,7 +17,23 @@ export default defineTheme({
         pattern: "/journal/[...path]",
         context: "content",
       },
+      { id: "tours", pattern: "/tours", context: "tourIndex" },
+      {
+        id: "tour-detail",
+        pattern: "/tours/[slug]",
+        context: "tourDetail",
+      },
       { id: "not-found", pattern: "/404", context: "notFound" },
+    ],
+    capabilities: [
+      { id: "catalog.search.v1" },
+      { id: "catalog.product-detail.v1" },
+      { id: "catalog.pricing.v1" },
+      { id: "catalog.availability.v1" },
+      { id: "catalog.requirements.v1" },
+      { id: "catalog.markets.v1" },
+      { id: "booking.session.v1" },
+      { id: "checkout.v1" },
     ],
     settings: [
       {

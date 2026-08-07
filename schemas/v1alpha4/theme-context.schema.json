@@ -1,0 +1,387 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.voyant.travel/theme/v1alpha4/theme-context.schema.json",
+  "title": "Voyant page context v1alpha4",
+  "description": "Published contexts are open for additive fields. Tour contexts reject named commercial snapshots; live values use capability endpoints.",
+  "oneOf": [
+    { "$ref": "#/$defs/home" },
+    { "$ref": "#/$defs/content" },
+    { "$ref": "#/$defs/notFound" },
+    { "$ref": "#/$defs/collectionIndex" },
+    { "$ref": "#/$defs/collectionEntry" },
+    { "$ref": "#/$defs/tourIndex" },
+    { "$ref": "#/$defs/tourDetail" }
+  ],
+  "$defs": {
+    "base": {
+      "type": "object",
+      "required": ["kind", "path", "locale", "site", "seo"],
+      "properties": {
+        "locale": { "type": "string", "minLength": 2 },
+        "site": { "type": "object", "required": ["name"] },
+        "seo": { "$ref": "#/$defs/seo" },
+        "menus": { "type": "object", "default": {} },
+        "navigation": { "type": "array", "default": [] },
+        "settings": { "type": "object", "default": {} },
+        "live": { "$ref": "#/$defs/live" }
+      }
+    },
+    "seo": {
+      "type": "object",
+      "required": ["title"],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "noIndex": { "type": "boolean", "default": false }
+      }
+    },
+    "live": {
+      "type": "object",
+      "properties": {
+        "capabilities": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "available", "methods"],
+            "properties": {
+              "id": { "$ref": "#/$defs/capabilityId" },
+              "available": { "type": "boolean" },
+              "methods": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "enum": ["GET", "POST", "PATCH"] }
+              },
+              "endpoint": { "type": "string", "pattern": "^/v1/public/[^?#]+$" }
+            },
+            "allOf": [
+              {
+                "if": { "properties": { "available": { "const": true } } },
+                "then": { "required": ["endpoint"] },
+                "else": { "not": { "required": ["endpoint"] } }
+              },
+              {
+                "if": {
+                  "properties": { "id": { "const": "catalog.search.v1" } }
+                },
+                "then": { "properties": { "methods": { "const": ["GET"] } } }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "id": { "const": "catalog.product-detail.v1" }
+                  }
+                },
+                "then": { "properties": { "methods": { "const": ["GET"] } } }
+              },
+              {
+                "if": {
+                  "properties": { "id": { "const": "catalog.pricing.v1" } }
+                },
+                "then": { "properties": { "methods": { "const": ["POST"] } } }
+              },
+              {
+                "if": {
+                  "properties": { "id": { "const": "catalog.availability.v1" } }
+                },
+                "then": { "properties": { "methods": { "const": ["POST"] } } }
+              },
+              {
+                "if": {
+                  "properties": { "id": { "const": "catalog.requirements.v1" } }
+                },
+                "then": { "properties": { "methods": { "const": ["POST"] } } }
+              },
+              {
+                "if": {
+                  "properties": { "id": { "const": "catalog.markets.v1" } }
+                },
+                "then": { "properties": { "methods": { "const": ["GET"] } } }
+              },
+              {
+                "if": {
+                  "properties": { "id": { "const": "booking.session.v1" } }
+                },
+                "then": {
+                  "properties": { "methods": { "const": ["POST", "PATCH"] } }
+                }
+              },
+              {
+                "if": { "properties": { "id": { "const": "checkout.v1" } } },
+                "then": { "properties": { "methods": { "const": ["POST"] } } }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "capabilityId": {
+      "enum": [
+        "catalog.search.v1",
+        "catalog.product-detail.v1",
+        "catalog.pricing.v1",
+        "catalog.availability.v1",
+        "catalog.requirements.v1",
+        "catalog.markets.v1",
+        "booking.session.v1",
+        "checkout.v1"
+      ]
+    },
+    "image": {
+      "type": "object",
+      "required": ["src", "alt"],
+      "properties": {
+        "src": { "type": "string", "minLength": 1 },
+        "alt": { "type": "string" },
+        "width": { "type": "integer", "exclusiveMinimum": 0 },
+        "height": { "type": "integer", "exclusiveMinimum": 0 }
+      }
+    },
+    "catalogProduct": {
+      "type": "object",
+      "required": ["id", "slug", "name", "bookingMode", "capacityMode"],
+      "not": {
+        "anyOf": [
+          { "required": ["price"] },
+          { "required": ["priceFrom"] },
+          { "required": ["pricing"] },
+          { "required": ["sellAmountCents"] },
+          { "required": ["sellCurrency"] },
+          { "required": ["departures"] },
+          { "required": ["nextDeparture"] },
+          { "required": ["availability"] },
+          { "required": ["requirements"] },
+          { "required": ["quote"] },
+          { "required": ["booking"] },
+          { "required": ["payment"] },
+          { "required": ["checkout"] }
+        ]
+      },
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "slug": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "shortDescription": { "type": ["string", "null"] },
+        "descriptionHtml": { "type": "string" },
+        "bookingMode": {
+          "enum": [
+            "date",
+            "date_time",
+            "open",
+            "stay",
+            "transfer",
+            "itinerary",
+            "other"
+          ]
+        },
+        "capacityMode": { "enum": ["free_sale", "limited", "on_request"] },
+        "productType": { "$ref": "#/$defs/productType" },
+        "categories": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/category" },
+          "default": []
+        },
+        "tags": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tag" },
+          "default": []
+        },
+        "destinations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/destination" },
+          "default": []
+        },
+        "locations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/location" },
+          "default": []
+        },
+        "coverMedia": { "$ref": "#/$defs/media" },
+        "media": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/media" },
+          "default": []
+        },
+        "features": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/feature" },
+          "default": []
+        },
+        "faqs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/faq" },
+          "default": []
+        },
+        "itinerary": { "$ref": "#/$defs/itinerary" }
+      }
+    },
+    "productType": {
+      "type": ["object", "null"],
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": ["string", "null"] }
+      }
+    },
+    "category": {
+      "type": "object",
+      "required": ["id", "name", "slug"],
+      "properties": {
+        "id": { "type": "string" },
+        "parentId": { "type": ["string", "null"] },
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "sortOrder": { "type": "integer" }
+      }
+    },
+    "tag": {
+      "type": "object",
+      "required": ["id", "name"],
+      "properties": { "id": { "type": "string" }, "name": { "type": "string" } }
+    },
+    "destination": {
+      "type": "object",
+      "required": ["id", "slug", "name"],
+      "properties": {
+        "id": { "type": "string" },
+        "parentId": { "type": ["string", "null"] },
+        "slug": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "destinationType": { "type": "string" },
+        "latitude": { "type": ["number", "null"] },
+        "longitude": { "type": ["number", "null"] },
+        "sortOrder": { "type": "integer" }
+      }
+    },
+    "location": {
+      "type": "object",
+      "required": ["id", "locationType", "title"],
+      "properties": {
+        "id": { "type": "string" },
+        "locationType": { "type": "string" },
+        "title": { "type": "string" },
+        "address": { "type": ["string", "null"] },
+        "city": { "type": ["string", "null"] },
+        "countryCode": { "type": ["string", "null"] },
+        "latitude": { "type": ["number", "null"] },
+        "longitude": { "type": ["number", "null"] },
+        "sortOrder": { "type": "integer" }
+      }
+    },
+    "media": {
+      "type": ["object", "null"],
+      "properties": {
+        "id": { "type": "string" },
+        "mediaType": { "type": "string" },
+        "name": { "type": "string" },
+        "url": { "type": "string" },
+        "mimeType": { "type": ["string", "null"] },
+        "width": { "type": ["integer", "null"] },
+        "height": { "type": ["integer", "null"] },
+        "altText": { "type": ["string", "null"] },
+        "sortOrder": { "type": "integer" }
+      }
+    },
+    "feature": {
+      "type": "object",
+      "required": ["id", "featureType", "title"],
+      "properties": {
+        "id": { "type": "string" },
+        "featureType": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "sortOrder": { "type": "integer" }
+      }
+    },
+    "faq": {
+      "type": "object",
+      "required": ["id", "question", "answer"],
+      "properties": {
+        "id": { "type": "string" },
+        "question": { "type": "string" },
+        "answer": { "type": "string" },
+        "sortOrder": { "type": "integer" }
+      }
+    },
+    "itinerary": {
+      "type": ["object", "null"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "days": { "type": "array" }
+      }
+    },
+    "home": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "properties": {
+            "kind": { "const": "home" },
+            "path": { "const": "/" }
+          }
+        }
+      ]
+    },
+    "content": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        { "properties": { "kind": { "const": "content" } } }
+      ]
+    },
+    "notFound": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        { "properties": { "kind": { "const": "notFound" } } }
+      ]
+    },
+    "collectionIndex": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        { "properties": { "kind": { "const": "collectionIndex" } } }
+      ]
+    },
+    "collectionEntry": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        { "properties": { "kind": { "const": "collectionEntry" } } }
+      ]
+    },
+    "tourIndex": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "required": ["title", "products"],
+          "properties": {
+            "kind": { "const": "tourIndex" },
+            "path": { "const": "/tours" },
+            "title": { "type": "string", "minLength": 1 },
+            "products": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/catalogProduct" },
+              "default": []
+            }
+          }
+        }
+      ]
+    },
+    "tourDetail": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "required": ["slug", "title", "product"],
+          "properties": {
+            "kind": { "const": "tourDetail" },
+            "path": { "type": "string", "pattern": "^/tours/[^/]+$" },
+            "slug": { "type": "string", "minLength": 1 },
+            "title": { "type": "string", "minLength": 1 },
+            "product": { "$ref": "#/$defs/catalogProduct" }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -14,7 +14,7 @@ export function createFixtureRouter(
   theme: ParsedThemeDefinition,
 ): FixtureRouter {
   const contentByPath = new Map(
-    theme.fixtures.content.map((context) => [
+    [...theme.fixtures.content, ...theme.fixtures.tourDetail].map((context) => [
       normalizePath(context.path),
       context,
     ]),
@@ -23,6 +23,9 @@ export function createFixtureRouter(
     resolve(input) {
       const path = normalizePath(String(input));
       if (path === "/") return theme.fixtures.home;
+      if (path === "/tours" && theme.fixtures.tourIndex) {
+        return theme.fixtures.tourIndex;
+      }
       return contentByPath.get(path) ?? { ...theme.fixtures.notFound, path };
     },
   };
