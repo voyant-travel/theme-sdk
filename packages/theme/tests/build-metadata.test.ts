@@ -97,7 +97,7 @@ describe("createThemeBuildMetadata", () => {
     ]);
   });
 
-  it("carries the content bindings a theme declares, after settings", async () => {
+  it("carries the content bindings a theme declares, after sections", async () => {
     // Without this the declaration reaches the build and stops: the platform
     // reads these to decide whether an operator's mapping satisfies the theme,
     // so a theme could declare a required slot and the check would pass
@@ -131,10 +131,97 @@ describe("createThemeBuildMetadata", () => {
     // The position is part of what the digest commits to, and the platform
     // rebuilds the object in this order to verify it.
     const keys = Object.keys(metadata);
-    expect(keys.indexOf("contentBindings")).toBe(keys.indexOf("settings") + 1);
+    expect(keys.indexOf("sections")).toBe(keys.indexOf("settings") + 1);
+    expect(keys.indexOf("contentBindings")).toBe(keys.indexOf("sections") + 1);
     expect(keys.indexOf("outputDirectory")).toBe(
       keys.indexOf("contentBindings") + 1,
     );
+  });
+
+  it("carries sections between settings and content bindings", async () => {
+    const theme = validTheme();
+    theme.manifest.sections = [
+      {
+        id: "hero",
+        name: "Hero",
+        settings: [{ id: "heading", label: "Heading", type: "text" }],
+        blocks: [
+          {
+            type: "button",
+            name: "Button",
+            limit: 2,
+            settings: [{ id: "label", label: "Label", type: "text" }],
+          },
+        ],
+        max_blocks: 2,
+        limit: 1,
+        presets: [
+          {
+            name: "Hero",
+            settings: {
+              heading: { zebra: 1, alpha: { zulu: true, beta: false } },
+            },
+            blocks: [
+              {
+                type: "button",
+                settings: { label: { zebra: 1, alpha: 2 } },
+              },
+            ],
+          },
+        ],
+        templates: ["home"],
+      },
+    ];
+    const checked = checkThemeDefinition(theme);
+    const root = await mkdtemp(path.join(tmpdir(), "voyant-sections-"));
+    if (!checked.theme) throw new Error("Test setup failed.");
+    await mkdir(path.join(root, "dist"), { recursive: true });
+    await writeFile(path.join(root, "dist", "index.html"), "home");
+
+    const metadata = await createThemeBuildMetadata({
+      projectRoot: root,
+      outputDirectory: "dist",
+      theme: checked.theme,
+    });
+
+    expect(metadata.sections[0]?.blocks[0]?.limit).toBe(2);
+    expect(
+      Object.keys(
+        (metadata.sections[0]?.presets[0]?.settings.heading ?? {}) as object,
+      ),
+    ).toEqual(["alpha", "zebra"]);
+    expect(
+      Object.keys(
+        (
+          (metadata.sections[0]?.presets[0]?.settings.heading ?? {}) as {
+            alpha?: object;
+          }
+        ).alpha ?? {},
+      ),
+    ).toEqual(["beta", "zulu"]);
+    expect(
+      Object.keys(
+        (metadata.sections[0]?.presets[0]?.blocks[0]?.settings.label ??
+          {}) as object,
+      ),
+    ).toEqual(["alpha", "zebra"]);
+    expect(Object.keys(metadata).slice(3, 8)).toEqual([
+      "routes",
+      "settings",
+      "sections",
+      "contentBindings",
+      "outputDirectory",
+    ]);
+    expect(Object.keys(metadata.sections[0] ?? {})).toEqual([
+      "id",
+      "name",
+      "settings",
+      "blocks",
+      "max_blocks",
+      "limit",
+      "presets",
+      "templates",
+    ]);
   });
 
   it("accepts a colour setting and rejects a default that is not one", async () => {

@@ -35,7 +35,7 @@ export default defineTheme({
       {
         id: "hero",
         name: "Hero",
-        fields: [{ id: "eyebrow", label: "Eyebrow", type: "text" }],
+        settings: [{ id: "eyebrow", label: "Eyebrow", type: "text" }],
       },
     ],
   },

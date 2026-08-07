@@ -74,6 +74,23 @@ carried through rather than rejected, and an envelope from an older readable
 contract version still resolves, so a release and a publication do not have to
 move together; see [the contract](contract.md).
 
+### Draft editor bridge and provenance
+
+The platform opts a loose page context into editing with
+`_voyant: { mode: "draft", editorOrigin: "https://…" }`. This signal belongs to
+the open context, never the strict response envelope or a request header. The
+Astro middleware then injects the platform-owned bridge. It posts
+`voyant:edit:load` to that exact origin and remains inert until the parent sends
+`voyant:edit:ready` from the same window and origin. The channel carries only
+RFC-6901 selection pointers and setting updates.
+
+Draft strings may use the SDK stega helpers to carry an invisible pointer.
+Encoding is allowlist-only. Root `settings`, `path`, `locale`, identifiers,
+routing fields, URLs, resource locations, and code injection are never encoded;
+non-draft contexts are returned unchanged by reference, preserving production
+output byte-for-byte. An older theme or host that never completes the handshake
+continues rendering normally without editor behavior.
+
 For an unknown path, the reader may return a typed `notFound` envelope with HTTP
 404, `X-Voyant-Publication-Locale`,
 `X-Voyant-Publication-Context-Path: /404`, and

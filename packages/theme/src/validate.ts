@@ -40,6 +40,67 @@ function duplicateDiagnostics(
   }));
 }
 
+function settingDiagnostics(
+  settings: ParsedThemeDefinition["manifest"]["settings"],
+  path: string,
+  file: string,
+): ThemeDiagnostic[] {
+  const diagnostics: ThemeDiagnostic[] = [];
+  settings.forEach((setting, index) => {
+    if ("options" in setting) {
+      diagnostics.push(
+        ...duplicateDiagnostics(
+          setting.options.map((option) => option.value),
+          `${path}[${index}].options`,
+          `Option in setting '${setting.id}'`,
+          file,
+        ),
+      );
+      if (
+        setting.default !== undefined &&
+        !setting.options.some((option) => option.value === setting.default)
+      ) {
+        diagnostics.push({
+          code: "THEME_SETTING_DEFAULT_INVALID",
+          message: `Setting '${setting.id}' default is not one of its options.`,
+          severity: "error",
+          path: `${path}[${index}].default`,
+          source: { file, path: ["manifest"] },
+        });
+      }
+    }
+    if (
+      (setting.type === "number" || setting.type === "range") &&
+      setting.min !== undefined &&
+      setting.max !== undefined &&
+      setting.max < setting.min
+    ) {
+      diagnostics.push({
+        code: "THEME_SETTING_LIMIT_INVALID",
+        message: `Setting '${setting.id}' max must be greater than or equal to min.`,
+        severity: "error",
+        path: `${path}[${index}].max`,
+        source: { file, path: ["manifest"] },
+      });
+    }
+    if (
+      (setting.type === "number" || setting.type === "range") &&
+      setting.default !== undefined &&
+      ((setting.min !== undefined && setting.default < setting.min) ||
+        (setting.max !== undefined && setting.default > setting.max))
+    ) {
+      diagnostics.push({
+        code: "THEME_SETTING_DEFAULT_INVALID",
+        message: `Setting '${setting.id}' default must be within its limits.`,
+        severity: "error",
+        path: `${path}[${index}].default`,
+        source: { file, path: ["manifest"] },
+      });
+    }
+  });
+  return diagnostics;
+}
+
 export function checkThemeDefinition(
   input: unknown,
   sourceFile = "theme.config.ts",
@@ -72,6 +133,7 @@ export function checkThemeDefinition(
       "Setting",
       sourceFile,
     ),
+    ...settingDiagnostics(manifest.settings, "$.manifest.settings", sourceFile),
   ];
 
   for (const kind of ["home", "notFound"] as const) {
@@ -136,12 +198,141 @@ export function checkThemeDefinition(
   for (const [sectionIndex, section] of manifest.sections.entries()) {
     diagnostics.push(
       ...duplicateDiagnostics(
-        section.fields.map((field) => field.id),
-        `$.manifest.sections[${sectionIndex}].fields`,
-        `Field in section '${section.id}'`,
+        section.settings.map((field) => field.id),
+        `$.manifest.sections[${sectionIndex}].settings`,
+        `Setting in section '${section.id}'`,
+        sourceFile,
+      ),
+      ...settingDiagnostics(
+        section.settings,
+        `$.manifest.sections[${sectionIndex}].settings`,
+        sourceFile,
+      ),
+      ...duplicateDiagnostics(
+        section.blocks.map((block) => block.type),
+        `$.manifest.sections[${sectionIndex}].blocks`,
+        `Block type in section '${section.id}'`,
+        sourceFile,
+      ),
+      ...duplicateDiagnostics(
+        section.templates,
+        `$.manifest.sections[${sectionIndex}].templates`,
+        `Template in section '${section.id}'`,
         sourceFile,
       ),
     );
+
+    const routeIds = new Set(manifest.routes.map((route) => route.id));
+    for (const [templateIndex, template] of section.templates.entries()) {
+      if (!routeIds.has(template)) {
+        diagnostics.push({
+          code: "THEME_SECTION_TEMPLATE_UNKNOWN",
+          message: `Section '${section.id}' allows unknown template '${template}'.`,
+          severity: "error",
+          path: `$.manifest.sections[${sectionIndex}].templates[${templateIndex}]`,
+          hint: "Use the id of a route declared in manifest.routes.",
+          source: { file: sourceFile, path: ["manifest", "sections"] },
+        });
+      }
+    }
+
+    for (const [blockIndex, block] of section.blocks.entries()) {
+      diagnostics.push(
+        ...duplicateDiagnostics(
+          block.settings.map((field) => field.id),
+          `$.manifest.sections[${sectionIndex}].blocks[${blockIndex}].settings`,
+          `Setting in block '${block.type}'`,
+          sourceFile,
+        ),
+        ...settingDiagnostics(
+          block.settings,
+          `$.manifest.sections[${sectionIndex}].blocks[${blockIndex}].settings`,
+          sourceFile,
+        ),
+      );
+      if (
+        section.max_blocks !== undefined &&
+        block.limit !== undefined &&
+        block.limit > section.max_blocks
+      ) {
+        diagnostics.push({
+          code: "THEME_SECTION_BLOCK_LIMIT_INVALID",
+          message: `Block '${block.type}' limit ${block.limit} exceeds section '${section.id}' max_blocks ${section.max_blocks}.`,
+          severity: "error",
+          path: `$.manifest.sections[${sectionIndex}].blocks[${blockIndex}].limit`,
+          source: { file: sourceFile, path: ["manifest", "sections"] },
+        });
+      }
+    }
+
+    const blockByType = new Map(
+      section.blocks.map((block) => [block.type, block]),
+    );
+    const settingIds = new Set(section.settings.map((setting) => setting.id));
+    for (const [presetIndex, preset] of section.presets.entries()) {
+      for (const key of Object.keys(preset.settings)) {
+        if (!settingIds.has(key)) {
+          diagnostics.push({
+            code: "THEME_SECTION_PRESET_SETTING_UNKNOWN",
+            message: `Preset '${preset.name}' supplies unknown section setting '${key}'.`,
+            severity: "error",
+            path: `$.manifest.sections[${sectionIndex}].presets[${presetIndex}].settings`,
+            source: { file: sourceFile, path: ["manifest", "sections"] },
+          });
+        }
+      }
+      if (
+        section.max_blocks !== undefined &&
+        preset.blocks.length > section.max_blocks
+      ) {
+        diagnostics.push({
+          code: "THEME_SECTION_PRESET_BLOCK_LIMIT_INVALID",
+          message: `Preset '${preset.name}' has ${preset.blocks.length} blocks but section '${section.id}' allows ${section.max_blocks}.`,
+          severity: "error",
+          path: `$.manifest.sections[${sectionIndex}].presets[${presetIndex}].blocks`,
+          source: { file: sourceFile, path: ["manifest", "sections"] },
+        });
+      }
+      const counts = new Map<string, number>();
+      for (const [presetBlockIndex, presetBlock] of preset.blocks.entries()) {
+        const block = blockByType.get(presetBlock.type);
+        if (!block) {
+          diagnostics.push({
+            code: "THEME_SECTION_PRESET_BLOCK_UNKNOWN",
+            message: `Preset '${preset.name}' uses unknown block type '${presetBlock.type}'.`,
+            severity: "error",
+            path: `$.manifest.sections[${sectionIndex}].presets[${presetIndex}].blocks[${presetBlockIndex}].type`,
+            source: { file: sourceFile, path: ["manifest", "sections"] },
+          });
+          continue;
+        }
+        const count = (counts.get(block.type) ?? 0) + 1;
+        counts.set(block.type, count);
+        if (block.limit !== undefined && count > block.limit) {
+          diagnostics.push({
+            code: "THEME_SECTION_PRESET_BLOCK_LIMIT_INVALID",
+            message: `Preset '${preset.name}' exceeds block '${block.type}' limit ${block.limit}.`,
+            severity: "error",
+            path: `$.manifest.sections[${sectionIndex}].presets[${presetIndex}].blocks`,
+            source: { file: sourceFile, path: ["manifest", "sections"] },
+          });
+        }
+        const blockSettingIds = new Set(
+          block.settings.map((setting) => setting.id),
+        );
+        for (const key of Object.keys(presetBlock.settings)) {
+          if (!blockSettingIds.has(key)) {
+            diagnostics.push({
+              code: "THEME_SECTION_PRESET_SETTING_UNKNOWN",
+              message: `Preset '${preset.name}' supplies unknown '${block.type}' setting '${key}'.`,
+              severity: "error",
+              path: `$.manifest.sections[${sectionIndex}].presets[${presetIndex}].blocks[${presetBlockIndex}].settings`,
+              source: { file: sourceFile, path: ["manifest", "sections"] },
+            });
+          }
+        }
+      }
+    }
   }
 
   diagnostics.sort(compareDiagnostics);

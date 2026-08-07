@@ -98,6 +98,10 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
 }
 
 export { CLOUDFLARE_THEME_RUNTIME } from "./deployment.js";
+export {
+  injectThemeEditorBridge,
+  themeEditorBridgeScript,
+} from "./editor-bridge.js";
 
 export {
   createThemeContextResolver,
