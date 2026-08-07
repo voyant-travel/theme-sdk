@@ -24,6 +24,7 @@ export {
   READABLE_CONTRACT_VERSIONS,
   seoSchema,
   siteSchema,
+  type ThemeBlock,
   type ThemeCodeInjection,
   type ThemeCollectionEntry,
   type ThemeCollectionField,
@@ -40,8 +41,10 @@ export {
   type ThemePageContext,
   type ThemeRoute,
   type ThemeSection,
+  type ThemeSectionPreset,
   type ThemeSeo,
   type ThemeSite,
+  themeBlockSchema,
   themeContentBindingSchema,
   themeContextKindSchema,
   themeContextResponseSchema,
@@ -51,6 +54,7 @@ export {
   themeManifestSchema,
   themePageContextSchema,
   themeRouteSchema,
+  themeSectionPresetSchema,
   themeSectionSchema,
   upgradeThemeContextResponse,
 } from "./contract.js";
@@ -61,6 +65,17 @@ export {
   TOOLING_SCHEMA_VERSION,
 } from "./diagnostics.js";
 export { createFixtureRouter, type FixtureRouter } from "./fixtures.js";
+export {
+  cleanStega,
+  type DecodedStega,
+  decodeStega,
+  encodeStega,
+  encodeThemeContextProvenance,
+  getThemeEditorContext,
+  isStegaPointerAllowed,
+  THEME_EDITOR_CONTEXT_KEY,
+  type ThemeEditorContext,
+} from "./provenance.js";
 export {
   checkThemeDefinition,
   type ThemeValidationResult,

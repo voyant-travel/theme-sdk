@@ -1,5 +1,7 @@
 import { resolveThemeContext } from "virtual:voyant-theme";
+import { getThemeEditorContext } from "@voyant-travel/theme";
 
+import { injectThemeEditorBridge } from "./editor-bridge.js";
 import { injectThemeCode, isInjectableDocument } from "./injection.js";
 
 /**
@@ -21,18 +23,20 @@ export async function onRequest(
   const response = await next();
   if (!isInjectableDocument(response)) return response;
 
-  let injection: Awaited<
-    ReturnType<typeof resolveThemeContext>
-  >["codeInjection"];
+  let pageContext: Awaited<ReturnType<typeof resolveThemeContext>>;
   try {
-    injection = (await resolveThemeContext(context.request.url)).codeInjection;
+    pageContext = await resolveThemeContext(context.request.url);
   } catch {
     return response;
   }
-  if (!injection) return response;
+  const editor = getThemeEditorContext(pageContext);
+  if (!pageContext.codeInjection && !editor) return response;
 
   const html = await response.text();
-  const injected = injectThemeCode(html, injection);
+  const injected = injectThemeEditorBridge(
+    injectThemeCode(html, pageContext.codeInjection),
+    editor,
+  );
   if (injected === html) return new Response(html, response);
 
   // Content-Length is now wrong, and a stale one truncates the document.

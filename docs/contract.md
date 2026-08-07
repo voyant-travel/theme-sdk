@@ -39,6 +39,47 @@ Open contexts do not mean unvalidated ones. Known fields keep their
 constraints: a malformed locale, a missing `seo.title`, or an unknown `kind`
 still fails closed.
 
+## Sections and blocks
+
+Themes declare the controls the visual editor may render; operators supply the
+values later. A section has `settings`, repeatable `blocks`, `max_blocks`, an
+optional per-template `limit`, starter `presets`, and `templates` containing
+route ids (`[]` means every route). Declaration order is editor order.
+
+```ts
+{
+  id: "hero",
+  name: "Hero",
+  settings: [{ id: "heading", label: "Heading", type: "inline_richtext" }],
+  blocks: [{
+    type: "button",
+    name: "Button",
+    limit: 2,
+    settings: [{ id: "label", label: "Label", type: "text" }],
+  }],
+  max_blocks: 2,
+  limit: 1,
+  presets: [{
+    name: "Hero",
+    settings: { heading: "Travel further" },
+    blocks: [{ type: "button", settings: { label: "Explore" } }],
+  }],
+  templates: ["home"],
+}
+```
+
+Settings support `text`, `textarea`, `richtext`, `inline_richtext`, `html`,
+`checkbox`, `radio`, `select`, `number`, `range`, `text_alignment`, `color`,
+`color_scheme`, `font_picker`, `image_picker`, `video`, and `video_url`.
+Voyant resource pickers are `tour`, `departure`, `supplier`, `media`, `page`,
+and `content_entry`; the last requires `content_type`. The legacy `boolean` and
+`image` literals remain readable.
+
+The build digest commits to declaration order with keys in the position
+`routes`, `settings`, `sections`, `contentBindings`, `outputDirectory`. Preset
+setting maps are JSON and are canonicalized recursively: array order is kept,
+while every object is rebuilt with keys in ascending UTF-16 code-unit order.
+
 ## The overlap window
 
 A publication and a theme release are separately versioned artifacts with

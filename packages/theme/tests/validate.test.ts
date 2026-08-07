@@ -85,4 +85,112 @@ describe("checkThemeDefinition", () => {
       ]
     `);
   });
+
+  it("validates section, block, preset and template identifiers and limits", () => {
+    const theme = validTheme();
+    theme.manifest.sections = [
+      {
+        id: "hero",
+        name: "Hero",
+        settings: [
+          { id: "heading", label: "Heading", type: "inline_richtext" },
+          { id: "heading", label: "Heading again", type: "text" },
+        ],
+        blocks: [
+          {
+            type: "button",
+            name: "Button",
+            limit: 2,
+            settings: [
+              { id: "label", label: "Label", type: "text" },
+              { id: "label", label: "Label again", type: "textarea" },
+            ],
+          },
+          { type: "button", name: "Duplicate", settings: [] },
+        ],
+        max_blocks: 1,
+        presets: [
+          {
+            name: "Invalid",
+            settings: { missing: "value" },
+            blocks: [
+              { type: "button", settings: { missing: "value" } },
+              { type: "unknown", settings: {} },
+            ],
+          },
+        ],
+        templates: ["missing", "missing"],
+      },
+    ];
+
+    const codes = checkThemeDefinition(theme).diagnostics.map(
+      (diagnostic) => diagnostic.code,
+    );
+    expect(codes).toContain("THEME_IDENTIFIER_DUPLICATE");
+    expect(codes).toContain("THEME_SECTION_TEMPLATE_UNKNOWN");
+    expect(codes).toContain("THEME_SECTION_BLOCK_LIMIT_INVALID");
+    expect(codes).toContain("THEME_SECTION_PRESET_BLOCK_LIMIT_INVALID");
+    expect(codes).toContain("THEME_SECTION_PRESET_BLOCK_UNKNOWN");
+    expect(codes).toContain("THEME_SECTION_PRESET_SETTING_UNKNOWN");
+  });
+
+  it("accepts every editor input and resource picker type", () => {
+    const theme = validTheme();
+    theme.manifest.sections = [
+      {
+        id: "inputs",
+        name: "Inputs",
+        settings: [
+          ...["text", "textarea", "richtext", "inline_richtext", "html"].map(
+            (type, index) => ({ id: `text-${index}`, label: type, type }),
+          ),
+          { id: "checkbox", label: "Checkbox", type: "checkbox" },
+          ...["radio", "select", "text_alignment"].map((type, index) => ({
+            id: `choice-${index}`,
+            label: type,
+            type,
+            options: [{ value: "left", label: "Left" }],
+          })),
+          { id: "number", label: "Number", type: "number" },
+          {
+            id: "range",
+            label: "Range",
+            type: "range",
+            min: 0,
+            max: 10,
+            step: 1,
+          },
+          ...[
+            "color",
+            "color_scheme",
+            "font_picker",
+            "image_picker",
+            "video",
+            "tour",
+            "departure",
+            "supplier",
+            "media",
+            "page",
+          ].map((type, index) => ({
+            id: `picker-${index}`,
+            label: type,
+            type,
+          })),
+          {
+            id: "video-url",
+            label: "Video URL",
+            type: "video_url",
+            accept: ["youtube"],
+          },
+          {
+            id: "entry",
+            label: "Entry",
+            type: "content_entry",
+            content_type: "guides",
+          },
+        ],
+      },
+    ] as typeof theme.manifest.sections;
+    expect(checkThemeDefinition(theme).ok).toBe(true);
+  });
 });

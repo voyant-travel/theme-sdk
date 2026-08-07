@@ -63,6 +63,8 @@ export interface ThemeBuildMetadata {
    * `context.settings`.
    */
   settings: ParsedThemeDefinition["manifest"]["settings"];
+  /** Section and block declarations used to generate the visual editor. */
+  sections: ParsedThemeDefinition["manifest"]["sections"];
   /**
    * The collection shapes the theme binds to, carried for the same reason as
    * settings: without this the declaration reaches the build and stops. The
@@ -422,6 +424,37 @@ function compareBuildPaths(left: string, right: string): number {
   return left > right ? 1 : 0;
 }
 
+/**
+ * JSONB does not retain object insertion order. Preset setting values are the
+ * only author-declared arbitrary records in build metadata, so sort every
+ * object within those values by Unicode code unit while preserving array order.
+ */
+function canonicalJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalJson);
+  if (typeof value !== "object" || value === null) return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .sort(([left], [right]) => compareBuildPaths(left, right))
+      .map(([key, nested]) => [key, canonicalJson(nested)]),
+  );
+}
+
+function canonicalSections(
+  sections: ParsedThemeDefinition["manifest"]["sections"],
+): ParsedThemeDefinition["manifest"]["sections"] {
+  return sections.map((section) => ({
+    ...section,
+    presets: section.presets.map((preset) => ({
+      ...preset,
+      settings: canonicalJson(preset.settings) as typeof preset.settings,
+      blocks: preset.blocks.map((block) => ({
+        ...block,
+        settings: canonicalJson(block.settings) as typeof block.settings,
+      })),
+    })),
+  }));
+}
+
 async function collectBuildFiles(
   root: string,
   directory = root,
@@ -496,7 +529,10 @@ export async function createThemeBuildMetadata(options: {
     // settings the way it wants them presented, and sorting them by id would
     // scatter a deliberate grouping.
     settings: options.theme.manifest.settings,
-    // Placed between settings and outputDirectory, matching the position the
+    // Declaration and nested array order are presentation order. This exact
+    // key position is shared with the platform's digest reconstruction.
+    sections: canonicalSections(options.theme.manifest.sections),
+    // Placed between sections and outputDirectory, matching the position the
     // platform rebuilds it in. The digest is taken over JSON.stringify of this
     // object, so the position is part of what the build commits to and moving
     // it would fail verification with identical content.

@@ -75,73 +75,152 @@ export const linkSchema = z.looseObject({
   href: z.string().min(1),
 });
 
+function settingBase<const T extends string>(type: T) {
+  return {
+    id: identifier,
+    label: z.string().min(1),
+    info: z.string().min(1).optional(),
+    required: z.boolean().optional(),
+    type: z.literal(type),
+  };
+}
+const stringDefault = z.string().optional();
+const settingOptionSchema = z.strictObject({
+  value: z.string().min(1),
+  label: z.string().min(1),
+});
+const choiceSettingFields = {
+  options: z.array(settingOptionSchema).min(1).max(50),
+  default: stringDefault,
+};
+const colorDefault = z
+  .string()
+  .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Use #rgb or #rrggbb.")
+  .optional();
+
+function textSetting<const T extends string>(type: T) {
+  return z.strictObject({
+    ...settingBase(type),
+    placeholder: z.string().optional(),
+    default: stringDefault,
+  });
+}
+
+function choiceSetting<const T extends string>(type: T) {
+  return z.strictObject({
+    ...settingBase(type),
+    ...choiceSettingFields,
+  });
+}
+
+function pickerSetting<const T extends string>(type: T) {
+  return z.strictObject({
+    ...settingBase(type),
+    default: stringDefault,
+  });
+}
+
+/**
+ * The editor control vocabulary. Declarations are intentionally closed: a new
+ * runtime context field is forward compatible, but a misspelled authoring key
+ * would otherwise silently produce a control that cannot edit its value.
+ *
+ * `boolean` and `image` are retained aliases from the first SDK contract.
+ */
 export const themeFieldSchema = z.discriminatedUnion("type", [
+  textSetting("text"),
+  textSetting("textarea"),
+  textSetting("richtext"),
+  textSetting("inline_richtext"),
+  textSetting("html"),
   z.strictObject({
-    id: identifier,
-    label: z.string().min(1),
-    type: z.literal("text"),
-    required: z.boolean().optional(),
-    default: z.string().optional(),
-  }),
-  z.strictObject({
-    id: identifier,
-    label: z.string().min(1),
-    type: z.literal("number"),
-    required: z.boolean().optional(),
-    default: z.number().optional(),
-    min: z.number().optional(),
-    max: z.number().optional(),
-  }),
-  z.strictObject({
-    id: identifier,
-    label: z.string().min(1),
-    type: z.literal("boolean"),
+    ...settingBase("checkbox"),
     default: z.boolean().optional(),
   }),
   z.strictObject({
-    id: identifier,
-    label: z.string().min(1),
-    type: z.literal("select"),
-    required: z.boolean().optional(),
-    default: z.string().optional(),
-    options: z
-      .array(
-        z.strictObject({ label: z.string().min(1), value: z.string().min(1) }),
-      )
-      .min(1),
+    ...settingBase("boolean"),
+    default: z.boolean().optional(),
+  }),
+  choiceSetting("radio"),
+  choiceSetting("select"),
+  choiceSetting("text_alignment"),
+  z.strictObject({
+    ...settingBase("number"),
+    min: z.number().optional(),
+    max: z.number().optional(),
+    step: z.number().positive().optional(),
+    default: z.number().optional(),
   }),
   z.strictObject({
-    id: identifier,
-    label: z.string().min(1),
-    type: z.literal("image"),
-    required: z.boolean().optional(),
+    ...settingBase("range"),
+    min: z.number(),
+    max: z.number(),
+    step: z.number().positive(),
+    unit: z.string().max(12).optional(),
+    default: z.number().optional(),
   }),
-  /**
-   * A colour, so a host can offer a swatch picker instead of asking an operator
-   * to type a hex code into a text box.
-   *
-   * The default is constrained to `#rgb` or `#rrggbb` rather than accepting any
-   * CSS colour. Named colours and `oklch()` would each need a host to parse
-   * them before it could render a picker, and a theme that wants that
-   * expressiveness can declare a `select` of its own palette.
-   */
   z.strictObject({
-    id: identifier,
-    label: z.string().min(1),
-    type: z.literal("color"),
-    required: z.boolean().optional(),
-    default: z
-      .string()
-      .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Use #rgb or #rrggbb.")
-      .optional(),
+    ...settingBase("color"),
+    default: colorDefault,
+  }),
+  pickerSetting("color_scheme"),
+  pickerSetting("font_picker"),
+  pickerSetting("image_picker"),
+  pickerSetting("video"),
+  pickerSetting("image"),
+  z.strictObject({
+    ...settingBase("video_url"),
+    accept: z
+      .array(z.enum(["youtube", "vimeo"]))
+      .min(1)
+      .max(2),
+    placeholder: z.string().optional(),
+    default: stringDefault,
+  }),
+  pickerSetting("tour"),
+  pickerSetting("departure"),
+  pickerSetting("supplier"),
+  pickerSetting("media"),
+  pickerSetting("page"),
+  z.strictObject({
+    ...settingBase("content_entry"),
+    content_type: identifier,
+    default: stringDefault,
   }),
 ]);
+
+export const themeBlockSchema = z.strictObject({
+  type: identifier,
+  name: z.string().min(1),
+  limit: z.number().int().positive().max(50).optional(),
+  settings: z.array(themeFieldSchema).max(200).default([]),
+});
+
+export const themeSectionPresetSchema = z.strictObject({
+  name: z.string().min(1),
+  settings: z.record(z.string(), z.json()).default({}),
+  blocks: z
+    .array(
+      z.strictObject({
+        type: identifier,
+        settings: z.record(z.string(), z.json()).default({}),
+      }),
+    )
+    .max(50)
+    .default([]),
+});
 
 export const themeSectionSchema = z.strictObject({
   id: identifier,
   name: z.string().min(1),
   description: z.string().optional(),
-  fields: z.array(themeFieldSchema),
+  settings: z.array(themeFieldSchema).max(200).default([]),
+  blocks: z.array(themeBlockSchema).max(50).default([]),
+  max_blocks: z.number().int().nonnegative().max(50).optional(),
+  limit: z.number().int().positive().max(50).optional(),
+  presets: z.array(themeSectionPresetSchema).max(20).default([]),
+  /** Empty means every declared route/template. Declaration order is UI order. */
+  templates: z.array(identifier).max(50).default([]),
 });
 
 export const themeContextKindSchema = z.enum([
@@ -207,8 +286,8 @@ export const themeManifestSchema = z.strictObject({
     .regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/, "Use a semantic version."),
   description: z.string().optional(),
   routes: z.array(themeRouteSchema).min(1),
-  settings: z.array(themeFieldSchema).default([]),
-  sections: z.array(themeSectionSchema).default([]),
+  settings: z.array(themeFieldSchema).max(200).default([]),
+  sections: z.array(themeSectionSchema).max(200).default([]),
   contentBindings: z.array(themeContentBindingSchema).max(20).default([]),
 });
 
@@ -469,6 +548,8 @@ export type ThemeSeo = z.infer<typeof seoSchema>;
 export type ThemeOpenGraph = z.infer<typeof openGraphSchema>;
 export type ThemeCodeInjection = z.infer<typeof codeInjectionSchema>;
 export type ThemeField = z.infer<typeof themeFieldSchema>;
+export type ThemeBlock = z.infer<typeof themeBlockSchema>;
+export type ThemeSectionPreset = z.infer<typeof themeSectionPresetSchema>;
 export type ThemeSection = z.infer<typeof themeSectionSchema>;
 export type ThemeRoute = z.infer<typeof themeRouteSchema>;
 export type ThemeManifest = z.infer<typeof themeManifestSchema>;
