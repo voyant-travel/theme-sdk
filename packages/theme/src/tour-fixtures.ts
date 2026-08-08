@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { bookingSessionActionRequestSchema } from "./booking-session.js";
 import {
   themeCapabilityIdSchema,
   tourDetailContextSchema,
@@ -224,6 +225,23 @@ export const tourSellingFixtureSchema = z
     }
 
     const result = fixture.result;
+    if (
+      fixture.capability === "booking.session.v1" &&
+      fixture.request.method === "PATCH"
+    ) {
+      const request = bookingSessionActionRequestSchema.safeParse(
+        fixture.request.body,
+      );
+      if (!request.success) {
+        for (const issue of request.error.issues) {
+          context.addIssue({
+            code: "custom",
+            message: `Invalid booking.session.v1 action request: ${issue.message}`,
+            path: ["request", "body", ...issue.path],
+          });
+        }
+      }
+    }
     if (fixture.state === "networkError") {
       if (result.transport !== "networkError")
         mismatch("networkError must use the network transport result.");

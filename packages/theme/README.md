@@ -25,6 +25,11 @@ Tour themes can validate deterministic live-selling stories with
 outside immutable page fixtures so commercial state never becomes published
 content.
 
+`bookingSessionActionRequestSchema` types and validates the closed
+`booking.session.v1` PATCH lifecycle union. It requires the theme-visible
+session `revision` and an `idempotencyKey` for update, quote, hold, commit,
+abandon, and renew actions while rejecting runtime aliases and provider paths.
+
 Themes declare alternate context-compatible renderers in `manifest.templates`.
 The platform validates and resolves its vertical, resource-type, taxonomy, and
 individual-resource assignments with `checkThemeTemplateAssignments` and

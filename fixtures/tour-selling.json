@@ -373,7 +373,7 @@
         "body": {
           "kind": "bookingSession",
           "sessionId": "session-1",
-          "revision": 0,
+          "revision": 1,
           "status": "draft",
           "expiresAt": "2030-01-01T10:30:00Z"
         }
@@ -387,7 +387,14 @@
       "request": {
         "method": "PATCH",
         "path": "/v1/public/theme/booking/session",
-        "body": { "sessionId": "session-1", "revision": 0, "action": "hold" }
+        "body": {
+          "sessionId": "session-1",
+          "revision": 1,
+          "idempotencyKey": "hold-cart-1",
+          "action": "hold",
+          "quoteId": "quote-1",
+          "quantity": 1
+        }
       },
       "result": {
         "transport": "http",
@@ -395,7 +402,7 @@
         "body": {
           "kind": "bookingSession",
           "sessionId": "session-1",
-          "revision": 1,
+          "revision": 2,
           "status": "held",
           "expiresAt": "2030-01-01T10:30:00Z"
         }
@@ -409,7 +416,15 @@
       "request": {
         "method": "PATCH",
         "path": "/v1/public/theme/booking/session",
-        "body": { "sessionId": "session-1", "revision": 1, "action": "commit" }
+        "body": {
+          "sessionId": "session-1",
+          "revision": 2,
+          "idempotencyKey": "commit-1",
+          "action": "commit",
+          "quoteId": "quote-1",
+          "holdId": "hold-1",
+          "requirementsFingerprint": "requirements-1"
+        }
       },
       "result": {
         "transport": "http",
@@ -417,7 +432,7 @@
         "body": {
           "kind": "bookingSession",
           "sessionId": "session-1",
-          "revision": 2,
+          "revision": 3,
           "status": "committed",
           "expiresAt": "2030-01-01T10:30:00Z"
         }
@@ -431,7 +446,13 @@
       "request": {
         "method": "PATCH",
         "path": "/v1/public/theme/booking/session",
-        "body": { "sessionId": "missing", "revision": 0 }
+        "body": {
+          "sessionId": "missing",
+          "revision": 1,
+          "idempotencyKey": "missing-update-1",
+          "action": "update",
+          "selection": {}
+        }
       },
       "result": {
         "transport": "http",
@@ -452,7 +473,13 @@
       "request": {
         "method": "PATCH",
         "path": "/v1/public/theme/booking/session",
-        "body": { "sessionId": "session-old", "revision": 0 }
+        "body": {
+          "sessionId": "session-old",
+          "revision": 1,
+          "idempotencyKey": "expired-update-1",
+          "action": "update",
+          "selection": {}
+        }
       },
       "result": {
         "transport": "http",
@@ -473,7 +500,13 @@
       "request": {
         "method": "PATCH",
         "path": "/v1/public/theme/booking/session",
-        "body": { "sessionId": "session-1", "revision": 0 }
+        "body": {
+          "sessionId": "session-1",
+          "revision": 1,
+          "idempotencyKey": "stale-update-1",
+          "action": "update",
+          "selection": {}
+        }
       },
       "result": {
         "transport": "http",
@@ -639,7 +672,12 @@
       "request": {
         "method": "PATCH",
         "path": "/v1/public/theme/booking/session",
-        "body": { "sessionId": "session-1", "revision": 1 }
+        "body": {
+          "sessionId": "session-1",
+          "revision": 1,
+          "idempotencyKey": "network-quote-1",
+          "action": "quote"
+        }
       },
       "result": {
         "transport": "networkError",

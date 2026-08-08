@@ -54,6 +54,52 @@ absolute and protocol-relative origins are invalid. The envelope contains no
 provider names, credentials, tokens, internal bindings, or implementation
 configuration.
 
+`bookingSessionActionRequestSchema` is the closed request body for every
+`booking.session.v1` `PATCH`. Its discriminated `action` union covers `update`,
+`quote`, `hold`, `commit`, `abandon`, and `renew`, with the fields required by
+each action. Every request carries the last observed positive integer `revision`
+and an 8–128 character `idempotencyKey`. The theme sends that key in the body; the
+platform binds the same value to its private upstream `Idempotency-Key` header
+and maps `revision` to the runtime concurrency precondition. Themes never send
+`expectedRevision`, a provider route, or provider selection fields.
+
+Reuse an `idempotencyKey` only when retrying the same logical action with the
+same body; choose a new key when the action or its inputs change. After an
+accepted action, continue with the revision returned by the new session state.
+A revision conflict means the theme must re-read current state before deciding
+whether to retry. The body key is authoritative; themes do not set the private
+upstream header themselves.
+
+| Action | Action-specific fields |
+| --- | --- |
+| `update` | `selection` |
+| `quote` | none |
+| `hold` | `quoteId`; optional positive `quantity` (defaults upstream to 1) |
+| `commit` | `quoteId`, `requirementsFingerprint`; optional `holdId`, `paymentIntent`, `payment` |
+| `abandon` | none |
+| `renew` | positive integer `extendBySeconds` |
+
+```ts
+const request = bookingSessionActionRequestSchema.parse({
+  sessionId: session.sessionId,
+  revision: session.revision,
+  idempotencyKey: "hold-cart-42-revision-3",
+  action: "hold",
+  quoteId: quote.id,
+  quantity: 2,
+});
+
+await fetch(capability.endpoint, {
+  method: "PATCH",
+  headers: { "content-type": "application/json" },
+  body: JSON.stringify(request),
+});
+```
+
+The platform continues to understand the earlier actionless update spelling
+for already-published themes. New themes should always use the explicit
+`action: "update"` member of this union.
+
 ### Deterministic selling fixtures
 
 `fixtures/tour-selling.json` is the reference matrix for UI stories, theme

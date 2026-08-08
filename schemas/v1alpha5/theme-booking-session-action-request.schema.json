@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.voyant.travel/theme/v1alpha5/theme-booking-session-action-request.schema.json",
+  "title": "Voyant booking.session.v1 action request v1alpha5",
+  "description": "Closed provider-neutral PATCH request envelope for a booking session lifecycle action.",
+  "oneOf": [
+    { "$ref": "#/$defs/update" },
+    { "$ref": "#/$defs/quote" },
+    { "$ref": "#/$defs/hold" },
+    { "$ref": "#/$defs/commit" },
+    { "$ref": "#/$defs/abandon" },
+    { "$ref": "#/$defs/renew" }
+  ],
+  "$defs": {
+    "sessionId": { "type": "string", "minLength": 1 },
+    "revision": { "type": "integer", "minimum": 1 },
+    "idempotencyKey": { "type": "string", "minLength": 8, "maxLength": 128 },
+    "selection": { "type": "object", "additionalProperties": true },
+    "payment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "returnUrl": { "type": "string", "format": "uri" },
+        "cancelUrl": { "type": "string", "format": "uri" },
+        "acceptedCheckoutHandoffs": {
+          "type": "array",
+          "items": { "enum": ["embedded", "redirect"] }
+        }
+      }
+    },
+    "update": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionId",
+        "revision",
+        "idempotencyKey",
+        "action",
+        "selection"
+      ],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/sessionId" },
+        "revision": { "$ref": "#/$defs/revision" },
+        "idempotencyKey": { "$ref": "#/$defs/idempotencyKey" },
+        "action": { "const": "update" },
+        "selection": { "$ref": "#/$defs/selection" }
+      }
+    },
+    "quote": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId", "revision", "idempotencyKey", "action"],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/sessionId" },
+        "revision": { "$ref": "#/$defs/revision" },
+        "idempotencyKey": { "$ref": "#/$defs/idempotencyKey" },
+        "action": { "const": "quote" }
+      }
+    },
+    "hold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionId",
+        "revision",
+        "idempotencyKey",
+        "action",
+        "quoteId"
+      ],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/sessionId" },
+        "revision": { "$ref": "#/$defs/revision" },
+        "idempotencyKey": { "$ref": "#/$defs/idempotencyKey" },
+        "action": { "const": "hold" },
+        "quoteId": { "type": "string", "minLength": 1 },
+        "quantity": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "commit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionId",
+        "revision",
+        "idempotencyKey",
+        "action",
+        "quoteId",
+        "requirementsFingerprint"
+      ],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/sessionId" },
+        "revision": { "$ref": "#/$defs/revision" },
+        "idempotencyKey": { "$ref": "#/$defs/idempotencyKey" },
+        "action": { "const": "commit" },
+        "quoteId": { "type": "string", "minLength": 1 },
+        "holdId": { "type": "string", "minLength": 1 },
+        "paymentIntent": { "type": "string", "minLength": 1 },
+        "requirementsFingerprint": { "type": "string", "minLength": 1 },
+        "payment": { "$ref": "#/$defs/payment" }
+      }
+    },
+    "abandon": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sessionId", "revision", "idempotencyKey", "action"],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/sessionId" },
+        "revision": { "$ref": "#/$defs/revision" },
+        "idempotencyKey": { "$ref": "#/$defs/idempotencyKey" },
+        "action": { "const": "abandon" }
+      }
+    },
+    "renew": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sessionId",
+        "revision",
+        "idempotencyKey",
+        "action",
+        "extendBySeconds"
+      ],
+      "properties": {
+        "sessionId": { "$ref": "#/$defs/sessionId" },
+        "revision": { "$ref": "#/$defs/revision" },
+        "idempotencyKey": { "$ref": "#/$defs/idempotencyKey" },
+        "action": { "const": "renew" },
+        "extendBySeconds": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}
