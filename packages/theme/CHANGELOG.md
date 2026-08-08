@@ -1,5 +1,17 @@
 # @voyant-travel/theme
 
+## 0.1.0-alpha.14
+
+### Minor Changes
+
+- 4c71b14: Add the v1alpha4 tour index/detail context contract, immutable public catalog
+  product projection, canonical route validation, and secret-free live capability
+  declarations.
+- 7683165: Add strict, provider-neutral tour selling fixture schemas and a deterministic
+  adapter covering page, offer, availability, booking, checkout, payment,
+  network, and malformed-response states without embedding live commerce data in
+  immutable page contexts.
+
 ## 0.1.0-alpha.13
 
 ### Minor Changes
