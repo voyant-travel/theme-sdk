@@ -41,6 +41,13 @@ export default defineTheme({
       },
       { id: "not-found", pattern: "/404", context: "notFound" },
     ],
+    templates: [
+      {
+        id: "tour-feature",
+        name: "Feature tour",
+        context: "tourDetail",
+      },
+    ],
     capabilities: [
       { id: "catalog.search.v1" },
       { id: "catalog.product-detail.v1" },
@@ -71,6 +78,7 @@ export default defineTheme({
       {
         id: "hero",
         name: "Hero",
+        templates: ["home", "tour-feature"],
         settings: [{ id: "eyebrow", label: "Eyebrow", type: "text" }],
       },
     ],

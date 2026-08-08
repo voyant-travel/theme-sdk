@@ -5,6 +5,7 @@ A `theme.config.ts` default-exports the result of `defineTheme`. It contains:
 - a package-like identity and semantic version;
 - routes mapped to page contexts, including canonical `tourIndex` and
   `tourDetail` contexts and the canonical cruise resource set;
+- alternate templates typed by the page context they can render;
 - a minimal alpha settings and section-field vocabulary;
 - local fixtures for every context;
 - optional argv arrays used by local build and development tooling.
@@ -112,10 +113,34 @@ when nested inside an additive object. Search and all selling state remain live:
 | `booking.session.v1` | `POST`, `PATCH` | Start and continue booking |
 | `checkout.v1` | `POST` | Hand off to checkout |
 
-Template assignment by vertical, resource, taxonomy, or individual record is
-intentionally not part of this first tracer. The existing `sections.templates`
-field targets route ids and is not a safe representation of publication-time
-resource assignment; that contract needs a dedicated follow-up.
+## Template assignment
+
+A route id is the default template for the context selected by routing. A theme
+may declare alternate renderers in `manifest.templates` as
+`{ id, name, context }`. Template ids are globally unique across routes and
+alternate templates. `sections.templates` may target either kind.
+
+Assignments are platform-owned publication configuration, not theme authoring.
+`themeTemplateAssignmentsSchema` accepts closed declarations at four scopes:
+`vertical`, `resourceType`, `taxonomy`, and an individual `resource`. Platform
+identifiers are opaque strings; an assignment also declares its page `context`
+and a theme `templateId`. `checkThemeTemplateAssignments` rejects unknown
+template ids, templates for a different context, duplicate selectors, and
+unknown authoring keys.
+
+`resolveThemeTemplate` applies one stable precedence order:
+
+1. individual resource;
+2. matching taxonomy term (highest explicit `priority`, then lexical selector
+   order for a stable tie-break);
+3. resource type;
+4. vertical;
+5. the routed context's default template.
+
+The resolver validates that the default is declared for the requested context.
+A materialized context exposes only the resulting `templateId`. It never
+contains assignment rules, taxonomy selectors, resource ids, or resolution
+provenance. `templateId` is optional to keep older readable publications valid.
 
 ## Open contexts, closed authoring
 
@@ -177,7 +202,7 @@ and `content_entry`; the last requires `content_type`. The legacy `boolean` and
 `image` literals remain readable.
 
 The build digest commits to declaration order with keys in the position
-`routes`, `settings`, `sections`, `contentBindings`, `capabilities`,
+`routes`, `templates`, `settings`, `sections`, `contentBindings`, `capabilities`,
 `outputDirectory`. Preset
 setting maps are JSON and are canonicalized recursively: array order is kept,
 while every object is rebuilt with keys in ascending UTF-16 code-unit order.

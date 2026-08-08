@@ -41,6 +41,35 @@
         }
       }
     },
+    "templates": {
+      "type": "array",
+      "maxItems": 200,
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "context"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "name": { "type": "string", "minLength": 1 },
+          "context": {
+            "enum": [
+              "home",
+              "content",
+              "notFound",
+              "collectionIndex",
+              "collectionEntry",
+              "tourIndex",
+              "tourDetail",
+              "cruiseIndex",
+              "cruiseDetail",
+              "shipDetail",
+              "sailingDetail"
+            ]
+          }
+        }
+      }
+    },
     "settings": { "type": "array", "default": [] },
     "sections": { "type": "array", "default": [] },
     "contentBindings": { "type": "array", "maxItems": 20, "default": [] },

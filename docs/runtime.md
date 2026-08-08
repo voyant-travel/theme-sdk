@@ -112,7 +112,7 @@ the platform's publication-aware edge caching and invalidation policy.
 ## Build metadata
 
 The integration emits this runtime descriptor, which tooling includes in the
-digest of `voyant.theme.build.v2`:
+digest of `voyant.theme.build.v3`:
 
 ```json
 {

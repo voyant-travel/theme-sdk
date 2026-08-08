@@ -34,6 +34,14 @@ function homeContext(extra: Record<string, unknown> = {}) {
 }
 
 describe("published context forward compatibility", () => {
+  it("carries only the resolved template id as modeled assignment state", () => {
+    const parsed = homeContextSchema.parse(
+      homeContext({ templateId: "home-campaign" }),
+    );
+    expect(parsed.templateId).toBe("home-campaign");
+    expect("templateAssignments" in parsed).toBe(false);
+  });
+
   it("accepts a context field this SDK release has never heard of", () => {
     const future = homeContext({
       // Whatever Voyant adds next. A deployed theme must render the fields it

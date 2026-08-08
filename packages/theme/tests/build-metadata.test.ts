@@ -50,7 +50,7 @@ describe("createThemeBuildMetadata", () => {
       "assets/app.js",
       "index.html",
     ]);
-    expect(first.schemaVersion).toBe("voyant.theme.build.v2");
+    expect(first.schemaVersion).toBe("voyant.theme.build.v3");
     expect(first.runtime).toBeNull();
     expect(first.digest).toMatch(/^[a-f0-9]{64}$/);
     expect(
@@ -97,7 +97,7 @@ describe("createThemeBuildMetadata", () => {
     ]);
   });
 
-  it("carries the content bindings a theme declares, after sections", async () => {
+  it("carries templates and content bindings after routes and sections", async () => {
     // Without this the declaration reaches the build and stops: the platform
     // reads these to decide whether an operator's mapping satisfies the theme,
     // so a theme could declare a required slot and the check would pass
@@ -105,6 +105,9 @@ describe("createThemeBuildMetadata", () => {
     const theme = validTheme();
     theme.manifest.settings = [
       { id: "brand-color", label: "Brand colour", type: "text" },
+    ];
+    theme.manifest.templates = [
+      { id: "feature", name: "Feature story", context: "content" },
     ];
     theme.manifest.contentBindings = [
       {
@@ -132,6 +135,9 @@ describe("createThemeBuildMetadata", () => {
     });
 
     expect(metadata.contentBindings?.[0]?.fields[0]?.required).toBe(true);
+    expect(metadata.templates).toEqual([
+      { id: "feature", name: "Feature story", context: "content" },
+    ]);
     expect(metadata.capabilities).toEqual([
       { id: "catalog.search.v1", required: true },
       { id: "checkout.v1", required: false },
@@ -139,6 +145,8 @@ describe("createThemeBuildMetadata", () => {
     // The position is part of what the digest commits to, and the platform
     // rebuilds the object in this order to verify it.
     const keys = Object.keys(metadata);
+    expect(keys.indexOf("templates")).toBe(keys.indexOf("routes") + 1);
+    expect(keys.indexOf("settings")).toBe(keys.indexOf("templates") + 1);
     expect(keys.indexOf("sections")).toBe(keys.indexOf("settings") + 1);
     expect(keys.indexOf("contentBindings")).toBe(keys.indexOf("sections") + 1);
     expect(keys.indexOf("capabilities")).toBe(
@@ -216,8 +224,9 @@ describe("createThemeBuildMetadata", () => {
           {}) as object,
       ),
     ).toEqual(["alpha", "zebra"]);
-    expect(Object.keys(metadata).slice(3, 9)).toEqual([
+    expect(Object.keys(metadata).slice(3, 10)).toEqual([
       "routes",
+      "templates",
       "settings",
       "sections",
       "contentBindings",

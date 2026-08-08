@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.voyant.travel/theme/v1alpha5/theme-template-resolution-target.schema.json",
+  "title": "Voyant theme template resolution target v1alpha5",
+  "description": "Platform-owned input used to resolve one context-compatible template id.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["context", "defaultTemplateId"],
+  "properties": {
+    "context": {
+      "enum": [
+        "home",
+        "content",
+        "notFound",
+        "collectionIndex",
+        "collectionEntry",
+        "tourIndex",
+        "tourDetail",
+        "cruiseIndex",
+        "cruiseDetail",
+        "shipDetail",
+        "sailingDetail"
+      ]
+    },
+    "defaultTemplateId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "verticalId": { "$ref": "#/$defs/platformId" },
+    "resourceTypeId": { "$ref": "#/$defs/platformId" },
+    "resourceId": { "$ref": "#/$defs/platformId" },
+    "taxonomyTerms": {
+      "type": "array",
+      "maxItems": 200,
+      "default": [],
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["taxonomyId", "termId"],
+        "properties": {
+          "taxonomyId": { "$ref": "#/$defs/platformId" },
+          "termId": { "$ref": "#/$defs/platformId" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "platformId": { "type": "string", "minLength": 1, "maxLength": 200 }
+  }
+}

@@ -24,3 +24,9 @@ Tour themes can validate deterministic live-selling stories with
 [`fixtures/tour-selling.json`](../../fixtures/tour-selling.json); it stays
 outside immutable page fixtures so commercial state never becomes published
 content.
+
+Themes declare alternate context-compatible renderers in `manifest.templates`.
+The platform validates and resolves its vertical, resource-type, taxonomy, and
+individual-resource assignments with `checkThemeTemplateAssignments` and
+`resolveThemeTemplate`; published contexts carry only the resolved
+`templateId`.

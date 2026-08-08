@@ -51,10 +51,12 @@ export interface ThemeBuildRuntime {
 }
 
 export interface ThemeBuildMetadata {
-  schemaVersion: "voyant.theme.build.v2";
+  schemaVersion: "voyant.theme.build.v3";
   contractVersion: ParsedThemeDefinition["contractVersion"];
   theme: { id: string; version: string };
   routes: Array<{ id: string; pattern: string; context: string }>;
+  /** Alternate renderer ids and their compatible page contexts. */
+  templates: ParsedThemeDefinition["manifest"]["templates"];
   /**
    * The settings the theme declares, carried verbatim so a host can render an
    * editor for them. Without this the declaration reaches the build and stops:
@@ -518,7 +520,7 @@ export async function createThemeBuildMetadata(options: {
     );
   }
   const canonical = {
-    schemaVersion: "voyant.theme.build.v2" as const,
+    schemaVersion: "voyant.theme.build.v3" as const,
     contractVersion: options.theme.contractVersion,
     theme: {
       id: options.theme.manifest.id,
@@ -527,6 +529,7 @@ export async function createThemeBuildMetadata(options: {
     routes: options.theme.manifest.routes
       .map(({ id, pattern, context }) => ({ id, pattern, context }))
       .sort((left, right) => left.id.localeCompare(right.id)),
+    templates: options.theme.manifest.templates,
     // Declaration order is preserved, unlike routes: a theme orders its
     // settings the way it wants them presented, and sorting them by id would
     // scatter a deliberate grouping.
