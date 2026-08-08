@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** The version a theme built against this release declares and requests. */
-export const CONTRACT_VERSION = "v1alpha4" as const;
+export const CONTRACT_VERSION = "v1alpha5" as const;
 
 /**
  * Envelope versions this release can read, newest last.
@@ -23,6 +23,7 @@ export const READABLE_CONTRACT_VERSIONS = [
   "v1alpha1",
   "v1alpha2",
   "v1alpha3",
+  "v1alpha4",
   CONTRACT_VERSION,
 ] as const;
 
@@ -232,6 +233,10 @@ export const themeContextKindSchema = z.enum([
   "collectionEntry",
   "tourIndex",
   "tourDetail",
+  "cruiseIndex",
+  "cruiseDetail",
+  "shipDetail",
+  "sailingDetail",
 ]);
 
 export const themeRouteSchema = z.strictObject({
@@ -248,6 +253,10 @@ export const THEME_CAPABILITY_IDS = [
   "catalog.availability.v1",
   "catalog.requirements.v1",
   "catalog.markets.v1",
+  "cruise.search.v1",
+  "cruise.sailing.v1",
+  "cruise.pricing.v1",
+  "cruise.quote.v1",
   "booking.session.v1",
   "checkout.v1",
 ] as const;
@@ -267,6 +276,10 @@ export const THEME_CAPABILITY_METHODS = {
   "catalog.availability.v1": ["POST"],
   "catalog.requirements.v1": ["POST"],
   "catalog.markets.v1": ["GET"],
+  "cruise.search.v1": ["GET"],
+  "cruise.sailing.v1": ["GET"],
+  "cruise.pricing.v1": ["POST"],
+  "cruise.quote.v1": ["POST"],
   "booking.session.v1": ["POST", "PATCH"],
   "checkout.v1": ["POST"],
 } as const satisfies Record<
@@ -768,6 +781,275 @@ export const tourDetailContextSchema = z
   })
   .superRefine(rejectCommercialSnapshots);
 
+/**
+ * Keys that must never be materialized into an immutable cruise publication.
+ *
+ * Cruise search, sailing availability, pricing, quoting, booking, and checkout
+ * stay live behind capabilities. Provider payloads and personal information
+ * stay behind the platform boundary. Normalizing catches camelCase, snake_case,
+ * and kebab-case spellings, and walking the whole value prevents a forbidden
+ * snapshot from being hidden inside a future additive field.
+ */
+const cruisePublicationForbiddenTerms = [
+  "price",
+  "pricing",
+  "amount",
+  "currency",
+  "fare",
+  "promotion",
+  "promo",
+  "discount",
+  "availability",
+  "inventory",
+  "quote",
+  "booking",
+  "checkout",
+  "session",
+  "payment",
+  "billing",
+  "card",
+  "customer",
+  "passenger",
+  "traveler",
+  "traveller",
+  "email",
+  "phone",
+  "dateofbirth",
+  "birthdate",
+  "dob",
+  "firstname",
+  "lastname",
+  "fullname",
+  "contact",
+  "postalcode",
+  "ipaddress",
+  "passport",
+  "address",
+  "token",
+  "secret",
+  "credential",
+  "provider",
+  "supplier",
+  "source",
+  "provenance",
+  "rawpayload",
+] as const;
+
+function rejectCruisePublicationLeaks(
+  value: Record<string, unknown>,
+  context: {
+    addIssue(issue: {
+      code: "custom";
+      message: string;
+      path: (string | number)[];
+    }): void;
+  },
+) {
+  const visit = (current: unknown, path: (string | number)[]) => {
+    if (Array.isArray(current)) {
+      current.forEach((item, index) => {
+        visit(item, [...path, index]);
+      });
+      return;
+    }
+    if (!isRecord(current)) return;
+    for (const [key, child] of Object.entries(current)) {
+      const normalized = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const forbidden = cruisePublicationForbiddenTerms.find((term) =>
+        term === "source"
+          ? normalized === term ||
+            normalized.startsWith(term) ||
+            normalized.endsWith(term) ||
+            normalized.endsWith("sourceid")
+          : normalized.includes(term),
+      );
+      if (forbidden) {
+        context.addIssue({
+          code: "custom",
+          message: `'${key}' is ${
+            [
+              "customer",
+              "passenger",
+              "traveler",
+              "traveller",
+              "email",
+              "phone",
+              "dateofbirth",
+              "birthdate",
+              "dob",
+              "firstname",
+              "lastname",
+              "fullname",
+              "contact",
+              "postalcode",
+              "ipaddress",
+              "passport",
+              "address",
+            ].includes(forbidden)
+              ? "personal information"
+              : [
+                    "provider",
+                    "supplier",
+                    "source",
+                    "provenance",
+                    "rawpayload",
+                  ].includes(forbidden)
+                ? "provider/source provenance"
+                : "live commercial state"
+          } and cannot be embedded in an immutable cruise context.`,
+          path: [...path, key],
+        });
+      } else {
+        visit(child, [...path, key]);
+      }
+    }
+  };
+  visit(value, []);
+}
+
+const publicationDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use an ISO 8601 calendar date.");
+
+export const cruisePortSchema = z
+  .looseObject({
+    id: z.string().min(1),
+    slug: z.string().min(1),
+    name: z.string().min(1),
+    countryCode: z.string().length(2).optional(),
+    descriptionHtml: z.string().optional(),
+    latitude: z.number().min(-90).max(90).optional(),
+    longitude: z.number().min(-180).max(180).optional(),
+    media: z.array(catalogProductMediaSchema).default([]),
+  })
+  .superRefine(rejectCruisePublicationLeaks);
+
+export const cruiseCabinCategorySchema = z
+  .looseObject({
+    id: z.string().min(1),
+    slug: z.string().min(1),
+    name: z.string().min(1),
+    descriptionHtml: z.string().optional(),
+    maxOccupancy: z.number().int().positive().optional(),
+    deckNames: z.array(z.string().min(1)).default([]),
+    media: z.array(catalogProductMediaSchema).default([]),
+  })
+  .superRefine(rejectCruisePublicationLeaks);
+
+export const cruiseShipSchema = z
+  .looseObject({
+    id: z.string().min(1),
+    slug: z.string().min(1),
+    name: z.string().min(1),
+    descriptionHtml: z.string().optional(),
+    cruiseLine: z.string().min(1).optional(),
+    launchedYear: z.number().int().positive().optional(),
+    deckCount: z.number().int().positive().optional(),
+    coverMedia: catalogProductMediaSchema.optional(),
+    media: z.array(catalogProductMediaSchema).default([]),
+    cabinCategories: z.array(cruiseCabinCategorySchema).default([]),
+  })
+  .superRefine(rejectCruisePublicationLeaks);
+
+export const cruiseItinerarySchema = z
+  .looseObject({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    days: z
+      .array(
+        z.looseObject({
+          dayNumber: z.number().int().positive(),
+          title: z.string().min(1),
+          descriptionHtml: z.string().optional(),
+          ports: z.array(cruisePortSchema).default([]),
+          atSea: z.boolean().default(false),
+        }),
+      )
+      .min(1),
+  })
+  .superRefine(rejectCruisePublicationLeaks);
+
+export const cruiseDepartureSchema = z
+  .looseObject({
+    startsOn: publicationDateSchema,
+    endsOn: publicationDateSchema,
+    durationNights: z.number().int().nonnegative(),
+    embarkationPort: cruisePortSchema,
+    disembarkationPort: cruisePortSchema,
+  })
+  .superRefine(rejectCruisePublicationLeaks);
+
+export const cruiseSailingSchema = z
+  .looseObject({
+    id: z.string().min(1),
+    slug: z.string().min(1),
+    name: z.string().min(1),
+    cruiseId: z.string().min(1),
+    shipId: z.string().min(1),
+    departure: cruiseDepartureSchema,
+    itinerary: cruiseItinerarySchema,
+    cabinCategories: z.array(cruiseCabinCategorySchema).default([]),
+  })
+  .superRefine(rejectCruisePublicationLeaks);
+
+export const cruiseSchema = z
+  .looseObject({
+    id: z.string().min(1),
+    slug: z.string().min(1),
+    name: z.string().min(1),
+    shortDescription: z.string().optional(),
+    descriptionHtml: z.string().optional(),
+    coverMedia: catalogProductMediaSchema.optional(),
+    media: z.array(catalogProductMediaSchema).default([]),
+    ports: z.array(cruisePortSchema).default([]),
+    ships: z.array(cruiseShipSchema).default([]),
+    sailings: z.array(cruiseSailingSchema).default([]),
+  })
+  .superRefine(rejectCruisePublicationLeaks);
+
+export const cruiseIndexContextSchema = z
+  .looseObject({
+    ...contextBase,
+    kind: z.literal("cruiseIndex"),
+    path: z.literal("/cruises"),
+    title: z.string().min(1),
+    cruises: z.array(cruiseSchema).default([]),
+  })
+  .superRefine(rejectCruisePublicationLeaks);
+
+export const cruiseDetailContextSchema = z
+  .looseObject({
+    ...contextBase,
+    kind: z.literal("cruiseDetail"),
+    path: z.string().regex(/^\/cruises\/[^/]+$/),
+    slug: z.string().min(1),
+    title: z.string().min(1),
+    cruise: cruiseSchema,
+  })
+  .superRefine(rejectCruisePublicationLeaks);
+
+export const shipDetailContextSchema = z
+  .looseObject({
+    ...contextBase,
+    kind: z.literal("shipDetail"),
+    path: z.string().regex(/^\/ships\/[^/]+$/),
+    slug: z.string().min(1),
+    title: z.string().min(1),
+    ship: cruiseShipSchema,
+  })
+  .superRefine(rejectCruisePublicationLeaks);
+
+export const sailingDetailContextSchema = z
+  .looseObject({
+    ...contextBase,
+    kind: z.literal("sailingDetail"),
+    path: z.string().regex(/^\/sailings\/[^/]+$/),
+    slug: z.string().min(1),
+    title: z.string().min(1),
+    sailing: cruiseSailingSchema,
+  })
+  .superRefine(rejectCruisePublicationLeaks);
+
 export const themePageContextSchema = z.discriminatedUnion("kind", [
   homeContextSchema,
   contentContextSchema,
@@ -776,6 +1058,10 @@ export const themePageContextSchema = z.discriminatedUnion("kind", [
   collectionEntryContextSchema,
   tourIndexContextSchema,
   tourDetailContextSchema,
+  cruiseIndexContextSchema,
+  cruiseDetailContextSchema,
+  shipDetailContextSchema,
+  sailingDetailContextSchema,
 ]);
 
 /**
@@ -819,6 +1105,10 @@ export const themeFixturesSchema = z.strictObject({
   notFound: notFoundContextSchema,
   tourIndex: tourIndexContextSchema.optional(),
   tourDetail: z.array(tourDetailContextSchema).default([]),
+  cruiseIndex: cruiseIndexContextSchema.optional(),
+  cruiseDetail: z.array(cruiseDetailContextSchema).default([]),
+  shipDetail: z.array(shipDetailContextSchema).default([]),
+  sailingDetail: z.array(sailingDetailContextSchema).default([]),
 });
 
 export const themeDefinitionSchema = z.strictObject({
@@ -885,6 +1175,17 @@ export type CatalogProductTag = z.infer<typeof catalogProductTagSchema>;
 export type CatalogProductType = z.infer<typeof catalogProductTypeSchema>;
 export type TourIndexContext = z.infer<typeof tourIndexContextSchema>;
 export type TourDetailContext = z.infer<typeof tourDetailContextSchema>;
+export type CruisePort = z.infer<typeof cruisePortSchema>;
+export type CruiseCabinCategory = z.infer<typeof cruiseCabinCategorySchema>;
+export type CruiseShip = z.infer<typeof cruiseShipSchema>;
+export type CruiseItinerary = z.infer<typeof cruiseItinerarySchema>;
+export type CruiseDeparture = z.infer<typeof cruiseDepartureSchema>;
+export type CruiseSailing = z.infer<typeof cruiseSailingSchema>;
+export type Cruise = z.infer<typeof cruiseSchema>;
+export type CruiseIndexContext = z.infer<typeof cruiseIndexContextSchema>;
+export type CruiseDetailContext = z.infer<typeof cruiseDetailContextSchema>;
+export type ShipDetailContext = z.infer<typeof shipDetailContextSchema>;
+export type SailingDetailContext = z.infer<typeof sailingDetailContextSchema>;
 export type ThemePageContext = z.infer<typeof themePageContextSchema>;
 export type ThemeContextResponse = z.infer<typeof themeContextResponseSchema>;
 export type ThemeDefinition = z.input<typeof themeDefinitionSchema>;

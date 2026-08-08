@@ -2,7 +2,7 @@ import { defineTheme, type ThemeDefinition } from "../src/index.js";
 
 export function validTheme(): ThemeDefinition {
   return defineTheme({
-    contractVersion: "v1alpha4",
+    contractVersion: "v1alpha5",
     manifest: {
       id: "test-theme",
       name: "Test theme",

@@ -320,4 +320,82 @@ describe("checkThemeDefinition", () => {
       expect.objectContaining({ code: "THEME_TOUR_ROUTE_COLLISION" }),
     );
   });
+
+  function addCruiseRoutes(theme: ReturnType<typeof validTheme>) {
+    theme.manifest.routes.push(
+      { id: "cruises", pattern: "/cruises", context: "cruiseIndex" },
+      {
+        id: "cruise-detail",
+        pattern: "/cruises/[slug]",
+        context: "cruiseDetail",
+      },
+      { id: "ship-detail", pattern: "/ships/[slug]", context: "shipDetail" },
+      {
+        id: "sailing-detail",
+        pattern: "/sailings/[slug]",
+        context: "sailingDetail",
+      },
+    );
+  }
+
+  it("accepts the complete canonical cruise route set", () => {
+    const theme = validTheme();
+    addCruiseRoutes(theme);
+    expect(checkThemeDefinition(theme).diagnostics).toEqual([]);
+  });
+
+  it("requires every cruise resource route when any one is declared", () => {
+    const theme = validTheme();
+    theme.manifest.routes.push({
+      id: "cruises",
+      pattern: "/cruises",
+      context: "cruiseIndex",
+    });
+    const diagnostics = checkThemeDefinition(theme).diagnostics;
+    expect(diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "THEME_CRUISE_ROUTE_REQUIRED",
+          message: expect.stringContaining("cruiseDetail"),
+        }),
+        expect.objectContaining({
+          code: "THEME_CRUISE_ROUTE_REQUIRED",
+          message: expect.stringContaining("shipDetail"),
+        }),
+        expect.objectContaining({
+          code: "THEME_CRUISE_ROUTE_REQUIRED",
+          message: expect.stringContaining("sailingDetail"),
+        }),
+      ]),
+    );
+  });
+
+  it("rejects non-canonical cruise resource routes", () => {
+    const theme = validTheme();
+    addCruiseRoutes(theme);
+    const detail = theme.manifest.routes.find(
+      (route) => route.context === "shipDetail",
+    );
+    if (detail) detail.pattern = "/vessels/[slug]";
+    expect(checkThemeDefinition(theme).diagnostics).toContainEqual(
+      expect.objectContaining({ code: "THEME_CRUISE_ROUTE_NON_CANONICAL" }),
+    );
+  });
+
+  it.each([
+    "/cruises/[id]",
+    "/ships/[...path]",
+    "/[...path]",
+  ])("rejects content routes that collide with canonical cruise paths: %s", (pattern) => {
+    const theme = validTheme();
+    addCruiseRoutes(theme);
+    theme.manifest.routes.push({
+      id: "collision",
+      pattern,
+      context: "content",
+    });
+    expect(checkThemeDefinition(theme).diagnostics).toContainEqual(
+      expect.objectContaining({ code: "THEME_CRUISE_ROUTE_COLLISION" }),
+    );
+  });
 });

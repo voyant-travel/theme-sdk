@@ -27,9 +27,21 @@ const metadata = await createThemeBuildMetadata({
   ),
 });
 assert.deepEqual(metadata.routes, [
+  {
+    id: "cruise-detail",
+    pattern: "/cruises/[slug]",
+    context: "cruiseDetail",
+  },
+  { id: "cruises", pattern: "/cruises", context: "cruiseIndex" },
   { id: "home", pattern: "/", context: "home" },
   { id: "journal-entry", pattern: "/journal/[...path]", context: "content" },
   { id: "not-found", pattern: "/404", context: "notFound" },
+  {
+    id: "sailing-detail",
+    pattern: "/sailings/[slug]",
+    context: "sailingDetail",
+  },
+  { id: "ship-detail", pattern: "/ships/[slug]", context: "shipDetail" },
   { id: "tour-detail", pattern: "/tours/[slug]", context: "tourDetail" },
   { id: "tours", pattern: "/tours", context: "tourIndex" },
 ]);

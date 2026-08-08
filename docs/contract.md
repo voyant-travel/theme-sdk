@@ -1,10 +1,10 @@
-# v1alpha4 theme contract
+# v1alpha5 theme contract
 
 A `theme.config.ts` default-exports the result of `defineTheme`. It contains:
 
 - a package-like identity and semantic version;
 - routes mapped to page contexts, including canonical `tourIndex` and
-  `tourDetail` contexts;
+  `tourDetail` contexts and the canonical cruise resource set;
 - a minimal alpha settings and section-field vocabulary;
 - local fixtures for every context;
 - optional argv arrays used by local build and development tooling.
@@ -82,8 +82,40 @@ boundary; provider names and credentials are never valid fixture fields.
 Page fixtures remain ordinary immutable `tourIndex` and `tourDetail` contexts.
 Commercial values live only under a fixture's `surface: "live"` response and
 therefore cannot be copied into a publication object. The fixture protocol is
-versioned independently as `v1`; adding it does not change the v1alpha4 page
+versioned independently as `v1`; adding it did not change the v1alpha4 page
 context wire version.
+
+## Cruises
+
+The v1alpha5 contract adds a second tourism graph without declaring stable v1:
+`cruiseIndex` at `/cruises`, `cruiseDetail` at `/cruises/[slug]`,
+`shipDetail` at `/ships/[slug]`, and `sailingDetail` at
+`/sailings/[slug]`. Declaring any one requires exactly one of all four. Dynamic
+or rest routes that can also own those paths are rejected.
+
+Immutable cruise contexts publish provider-neutral editorial projections for
+cruises, ships, sailings, itineraries, calendar departures, ports, and cabin
+categories. A departure identifies the public dates, duration, and embarkation
+and disembarkation ports; it is not an inventory or fare snapshot.
+
+Every key in an immutable cruise graph is inspected recursively. Price,
+availability, fare, promotion, quote, booking, session, checkout, payment,
+personal-information, provider, source, and provenance fields are rejected even
+when nested inside an additive object. Search and all selling state remain live:
+
+| Capability id | Methods | Purpose |
+| --- | --- | --- |
+| `cruise.search.v1` | `GET` | Search and filter current cruise results |
+| `cruise.sailing.v1` | `GET` | Resolve current sailing choices |
+| `cruise.pricing.v1` | `POST` | Price a selected sailing and cabins |
+| `cruise.quote.v1` | `POST` | Create a provider-neutral quote |
+| `booking.session.v1` | `POST`, `PATCH` | Start and continue booking |
+| `checkout.v1` | `POST` | Hand off to checkout |
+
+Template assignment by vertical, resource, taxonomy, or individual record is
+intentionally not part of this first tracer. The existing `sections.templates`
+field targets route ids and is not a safe representation of publication-time
+resource assignment; that contract needs a dedicated follow-up.
 
 ## Open contexts, closed authoring
 
@@ -209,6 +241,7 @@ both silently break the analytics and consent tags operators depend on.
 The context is a theme-facing projection, not Voyant's internal model. It says
 what a page needs to render and nothing about how content is stored.
 
-Schemas live under `schemas/v1alpha4`. Breaking experiments require a new
+Schemas live under `schemas/v1alpha5`; v1alpha4 schemas remain published for
+tour compatibility. Breaking experiments require a new
 contract version; additive context fields do not. Stable diagnostic codes can
 be consumed by CI and agents.

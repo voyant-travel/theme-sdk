@@ -4,7 +4,7 @@ import fixtures from "../../fixtures/minimal.json";
 const parsedFixtures = themeFixturesSchema.parse(fixtures);
 
 export default defineTheme({
-  contractVersion: "v1alpha4",
+  contractVersion: "v1alpha5",
   manifest: {
     id: "minimal",
     name: "Minimal Voyant Theme",
@@ -23,6 +23,22 @@ export default defineTheme({
         pattern: "/tours/[slug]",
         context: "tourDetail",
       },
+      { id: "cruises", pattern: "/cruises", context: "cruiseIndex" },
+      {
+        id: "cruise-detail",
+        pattern: "/cruises/[slug]",
+        context: "cruiseDetail",
+      },
+      {
+        id: "ship-detail",
+        pattern: "/ships/[slug]",
+        context: "shipDetail",
+      },
+      {
+        id: "sailing-detail",
+        pattern: "/sailings/[slug]",
+        context: "sailingDetail",
+      },
       { id: "not-found", pattern: "/404", context: "notFound" },
     ],
     capabilities: [
@@ -32,6 +48,10 @@ export default defineTheme({
       { id: "catalog.availability.v1" },
       { id: "catalog.requirements.v1" },
       { id: "catalog.markets.v1" },
+      { id: "cruise.search.v1" },
+      { id: "cruise.sailing.v1" },
+      { id: "cruise.pricing.v1" },
+      { id: "cruise.quote.v1" },
       { id: "booking.session.v1" },
       { id: "checkout.v1" },
     ],

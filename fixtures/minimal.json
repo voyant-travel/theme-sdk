@@ -139,6 +139,134 @@
       }
     }
   ],
+  "cruiseIndex": {
+    "kind": "cruiseIndex",
+    "path": "/cruises",
+    "locale": "en",
+    "site": { "name": "Northstar Travel" },
+    "navigation": [{ "label": "Home", "href": "/" }],
+    "menus": { "primary": [{ "label": "Home", "href": "/" }] },
+    "seo": { "title": "Cruises", "noIndex": false },
+    "settings": { "accent": "ocean" },
+    "title": "Cruises",
+    "cruises": [
+      {
+        "id": "mediterranean-light",
+        "slug": "mediterranean-light",
+        "name": "Mediterranean light",
+        "shortDescription": "Seven nights among island ports."
+      }
+    ],
+    "live": {
+      "capabilities": [
+        {
+          "id": "cruise.search.v1",
+          "available": true,
+          "methods": ["GET"],
+          "endpoint": "/v1/public/theme/cruise-search"
+        }
+      ]
+    }
+  },
+  "cruiseDetail": [
+    {
+      "kind": "cruiseDetail",
+      "path": "/cruises/mediterranean-light",
+      "slug": "mediterranean-light",
+      "locale": "en",
+      "site": { "name": "Northstar Travel" },
+      "navigation": [{ "label": "Cruises", "href": "/cruises" }],
+      "menus": { "primary": [{ "label": "Cruises", "href": "/cruises" }] },
+      "seo": { "title": "Mediterranean light", "noIndex": false },
+      "settings": { "accent": "ocean" },
+      "title": "Mediterranean light",
+      "cruise": {
+        "id": "mediterranean-light",
+        "slug": "mediterranean-light",
+        "name": "Mediterranean light",
+        "ports": [
+          {
+            "id": "athens",
+            "slug": "athens",
+            "name": "Athens",
+            "countryCode": "GR"
+          }
+        ]
+      }
+    }
+  ],
+  "shipDetail": [
+    {
+      "kind": "shipDetail",
+      "path": "/ships/aurora",
+      "slug": "aurora",
+      "locale": "en",
+      "site": { "name": "Northstar Travel" },
+      "navigation": [{ "label": "Cruises", "href": "/cruises" }],
+      "menus": { "primary": [{ "label": "Cruises", "href": "/cruises" }] },
+      "seo": { "title": "Aurora", "noIndex": false },
+      "settings": { "accent": "ocean" },
+      "title": "Aurora",
+      "ship": {
+        "id": "aurora",
+        "slug": "aurora",
+        "name": "Aurora",
+        "cabinCategories": [
+          { "id": "balcony", "slug": "balcony", "name": "Balcony" }
+        ]
+      }
+    }
+  ],
+  "sailingDetail": [
+    {
+      "kind": "sailingDetail",
+      "path": "/sailings/aurora-2027-05-08",
+      "slug": "aurora-2027-05-08",
+      "locale": "en",
+      "site": { "name": "Northstar Travel" },
+      "navigation": [{ "label": "Cruises", "href": "/cruises" }],
+      "menus": { "primary": [{ "label": "Cruises", "href": "/cruises" }] },
+      "seo": { "title": "Aurora, 8 May 2027", "noIndex": false },
+      "settings": { "accent": "ocean" },
+      "title": "Aurora, 8 May 2027",
+      "sailing": {
+        "id": "aurora-2027-05-08",
+        "slug": "aurora-2027-05-08",
+        "name": "Mediterranean light — 8 May 2027",
+        "cruiseId": "mediterranean-light",
+        "shipId": "aurora",
+        "departure": {
+          "startsOn": "2027-05-08",
+          "endsOn": "2027-05-15",
+          "durationNights": 7,
+          "embarkationPort": {
+            "id": "athens",
+            "slug": "athens",
+            "name": "Athens"
+          },
+          "disembarkationPort": {
+            "id": "athens",
+            "slug": "athens",
+            "name": "Athens"
+          }
+        },
+        "itinerary": {
+          "id": "mediterranean-light-7n",
+          "name": "Mediterranean light",
+          "days": [
+            {
+              "dayNumber": 1,
+              "title": "Athens",
+              "ports": [{ "id": "athens", "slug": "athens", "name": "Athens" }]
+            }
+          ]
+        },
+        "cabinCategories": [
+          { "id": "balcony", "slug": "balcony", "name": "Balcony" }
+        ]
+      }
+    }
+  ],
   "notFound": {
     "kind": "notFound",
     "path": "/404",

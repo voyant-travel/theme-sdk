@@ -84,6 +84,7 @@ describe("published context forward compatibility", () => {
   it.each([
     "v1alpha2",
     "v1alpha3",
+    "v1alpha4",
   ] as const)("reads an unchanged %s publication envelope", (contractVersion) => {
     const parsed = themeContextResponseSchema.parse({
       contractVersion,
@@ -125,7 +126,7 @@ describe("published context forward compatibility", () => {
     // bumped past whatever the current one becomes.
     expect(
       themeContextResponseSchema.safeParse({
-        contractVersion: "v1alpha5",
+        contractVersion: "v1alpha6",
         context: homeContext(),
       }).success,
     ).toBe(false);

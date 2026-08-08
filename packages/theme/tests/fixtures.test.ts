@@ -68,4 +68,57 @@ describe("createFixtureRouter", () => {
       slug: "delta",
     });
   });
+
+  it("resolves cruise, ship, and sailing fixtures by canonical path", () => {
+    const theme = validTheme();
+    const base = {
+      locale: "en",
+      site: { name: "Test" },
+      navigation: [],
+      menus: {},
+      settings: {},
+      seo: { title: "Cruises" },
+    };
+    theme.fixtures.cruiseIndex = {
+      ...base,
+      kind: "cruiseIndex",
+      path: "/cruises",
+      title: "Cruises",
+      cruises: [],
+    };
+    theme.fixtures.cruiseDetail = [
+      {
+        ...base,
+        kind: "cruiseDetail",
+        path: "/cruises/mediterranean-light",
+        slug: "mediterranean-light",
+        title: "Mediterranean light",
+        cruise: {
+          id: "mediterranean-light",
+          slug: "mediterranean-light",
+          name: "Mediterranean light",
+        },
+      },
+    ];
+    theme.fixtures.shipDetail = [
+      {
+        ...base,
+        kind: "shipDetail",
+        path: "/ships/aurora",
+        slug: "aurora",
+        title: "Aurora",
+        ship: { id: "aurora", slug: "aurora", name: "Aurora" },
+      },
+    ];
+    theme.fixtures.sailingDetail = [];
+
+    const checked = checkThemeDefinition(theme);
+    if (!checked.theme) throw new Error("Test setup failed.");
+    const router = createFixtureRouter(checked.theme);
+    expect(router.resolve("/cruises").kind).toBe("cruiseIndex");
+    expect(router.resolve("/cruises/mediterranean-light").kind).toBe(
+      "cruiseDetail",
+    );
+    expect(router.resolve("/ships/aurora").kind).toBe("shipDetail");
+  });
 });

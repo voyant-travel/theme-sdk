@@ -2,7 +2,7 @@
 
 One theme source commit produces one immutable Astro server release. Local
 development renders `theme.config.ts` fixtures. A Voyant deployment renders the
-same `v1alpha2` context types from the selected publication without rebuilding
+same `v1alpha5` context types from the selected publication without rebuilding
 theme source when operators publish content.
 
 This contract follows the current official Astro Cloudflare adapter:
@@ -55,7 +55,7 @@ The request contains:
 - `X-Voyant-Site-Id`;
 - `X-Voyant-Publication-Id`;
 - `X-Voyant-Theme-Release-Id`;
-- `X-Voyant-Theme-Contract-Version: v1alpha2`, the version the theme declares.
+- `X-Voyant-Theme-Contract-Version: v1alpha5`, the version the theme declares.
 
 The server-owned reader maps that scope to
 `themes/publications/{siteId}/{publicationId}/{releaseId}` and resolves context

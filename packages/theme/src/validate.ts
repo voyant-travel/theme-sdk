@@ -199,6 +199,19 @@ export function checkThemeDefinition(
   }
 
   const patterns = new Map<string, number>();
+  const canonicalPatterns: Partial<
+    Record<
+      ParsedThemeDefinition["manifest"]["routes"][number]["context"],
+      string
+    >
+  > = {
+    tourIndex: "/tours",
+    tourDetail: "/tours/[slug]",
+    cruiseIndex: "/cruises",
+    cruiseDetail: "/cruises/[slug]",
+    shipDetail: "/ships/[slug]",
+    sailingDetail: "/sailings/[slug]",
+  };
   manifest.routes.forEach((route, index) => {
     const previous = patterns.get(route.pattern);
     if (previous !== undefined) {
@@ -214,15 +227,12 @@ export function checkThemeDefinition(
       });
     } else patterns.set(route.pattern, index);
 
-    const canonicalPattern =
-      route.context === "tourIndex"
-        ? "/tours"
-        : route.context === "tourDetail"
-          ? "/tours/[slug]"
-          : undefined;
+    const canonicalPattern = canonicalPatterns[route.context];
     if (canonicalPattern && route.pattern !== canonicalPattern) {
       diagnostics.push({
-        code: "THEME_TOUR_ROUTE_NON_CANONICAL",
+        code: route.context.startsWith("tour")
+          ? "THEME_TOUR_ROUTE_NON_CANONICAL"
+          : "THEME_CRUISE_ROUTE_NON_CANONICAL",
         message: `${route.context} must use the canonical route '${canonicalPattern}'.`,
         severity: "error",
         path: `$.manifest.routes[${index}].pattern`,
@@ -285,6 +295,55 @@ export function checkThemeDefinition(
             severity: "error",
             path: `$.manifest.routes[${index}].pattern`,
             hint: "Reserve /tours and /tours/[slug] for their canonical tour contexts.",
+            source: {
+              file: sourceFile,
+              path: ["manifest", "routes", index, "pattern"],
+            },
+          });
+        }
+      }
+    }
+  }
+
+  const cruiseKinds = [
+    "cruiseIndex",
+    "cruiseDetail",
+    "shipDetail",
+    "sailingDetail",
+  ] as const;
+  const cruiseRoutes = manifest.routes.filter((route) =>
+    cruiseKinds.includes(route.context as (typeof cruiseKinds)[number]),
+  );
+  if (cruiseRoutes.length > 0) {
+    for (const kind of cruiseKinds) {
+      const matches = cruiseRoutes.filter((route) => route.context === kind);
+      if (matches.length !== 1) {
+        diagnostics.push({
+          code: "THEME_CRUISE_ROUTE_REQUIRED",
+          message: `Exactly one ${kind} route is required when a cruise route is declared; found ${matches.length}.`,
+          severity: "error",
+          path: "$.manifest.routes",
+          source: { file: sourceFile, path: ["manifest", "routes"] },
+        });
+      }
+    }
+
+    for (const [index, route] of manifest.routes.entries()) {
+      for (const other of manifest.routes.slice(0, index)) {
+        if (
+          route.pattern !== other.pattern &&
+          routePatternsOverlap(route.pattern, other.pattern) &&
+          (cruiseKinds.includes(
+            route.context as (typeof cruiseKinds)[number],
+          ) ||
+            cruiseKinds.includes(other.context as (typeof cruiseKinds)[number]))
+        ) {
+          diagnostics.push({
+            code: "THEME_CRUISE_ROUTE_COLLISION",
+            message: `Route pattern '${route.pattern}' overlaps cruise route '${other.pattern}'.`,
+            severity: "error",
+            path: `$.manifest.routes[${index}].pattern`,
+            hint: "Reserve /cruises, /cruises/[slug], /ships/[slug], and /sailings/[slug] for their canonical cruise contexts.",
             source: {
               file: sourceFile,
               path: ["manifest", "routes", index, "pattern"],
