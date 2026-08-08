@@ -153,6 +153,12 @@ export function checkThemeDefinition(
       sourceFile,
     ),
     ...duplicateDiagnostics(
+      manifest.templates.map((template) => template.id),
+      "$.manifest.templates",
+      "Template",
+      sourceFile,
+    ),
+    ...duplicateDiagnostics(
       manifest.sections.map((section) => section.id),
       "$.manifest.sections",
       "Section",
@@ -172,6 +178,22 @@ export function checkThemeDefinition(
     ),
     ...settingDiagnostics(manifest.settings, "$.manifest.settings", sourceFile),
   ];
+
+  const routeIds = new Set(manifest.routes.map((route) => route.id));
+  manifest.templates.forEach((template, index) => {
+    if (routeIds.has(template.id)) {
+      diagnostics.push({
+        code: "THEME_IDENTIFIER_DUPLICATE",
+        message: `Template identifier '${template.id}' is also used by a route.`,
+        severity: "error",
+        path: `$.manifest.templates[${index}].id`,
+        source: {
+          file: sourceFile,
+          path: ["manifest", "templates", index, "id"],
+        },
+      });
+    }
+  });
 
   for (const kind of ["home", "notFound"] as const) {
     const matches = manifest.routes.filter((route) => route.context === kind);
@@ -381,15 +403,18 @@ export function checkThemeDefinition(
       ),
     );
 
-    const routeIds = new Set(manifest.routes.map((route) => route.id));
+    const templateIds = new Set([
+      ...manifest.routes.map((route) => route.id),
+      ...manifest.templates.map((template) => template.id),
+    ]);
     for (const [templateIndex, template] of section.templates.entries()) {
-      if (!routeIds.has(template)) {
+      if (!templateIds.has(template)) {
         diagnostics.push({
           code: "THEME_SECTION_TEMPLATE_UNKNOWN",
           message: `Section '${section.id}' allows unknown template '${template}'.`,
           severity: "error",
           path: `$.manifest.sections[${sectionIndex}].templates[${templateIndex}]`,
-          hint: "Use the id of a route declared in manifest.routes.",
+          hint: "Use the id of a route or template declared in the manifest.",
           source: { file: sourceFile, path: ["manifest", "sections"] },
         });
       }

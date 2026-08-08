@@ -22,6 +22,6 @@ for editor and type-checker support. The types subpath is owned and published by
 this package.
 
 The build integration writes `.voyant/theme-runtime.json`; theme tooling folds
-that descriptor into `voyant.theme.build.v2`. Voyant publishes the adapter's
+that descriptor into `voyant.theme.build.v3`. Voyant publishes the adapter's
 built `server/entry.mjs` with the archived `client` directory on an `ASSETS`
 binding. See the repository runtime contract for the exact bindings.

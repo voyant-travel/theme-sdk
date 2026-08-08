@@ -22,8 +22,8 @@ provide shell-free argv arrays in `tooling.build` and `tooling.dev`.
 stderr, allowing the CLI to keep `--json` output machine-readable.
 
 After a successful build, tooling writes `.voyant/theme-build.json` with schema
-`voyant.theme.build.v2`. It records the contract and theme versions, sorted
-routes, relative output path, runtime descriptor, and sorted SHA-256 file
+`voyant.theme.build.v3`. It records the contract and theme versions, sorted
+routes, alternate template declarations, relative output path, runtime descriptor, and sorted SHA-256 file
 digests. Its aggregate digest excludes timestamps and absolute paths, making
 identical artifacts reproducible across machines.
 
