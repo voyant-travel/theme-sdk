@@ -1,5 +1,20 @@
 # @voyant-travel/theme
 
+## 0.1.0-alpha.15
+
+### Minor Changes
+
+- ad99b9e: Add the v1alpha5 provider-neutral cruise publication contract, canonical cruise
+  resource routes, live cruise capabilities, fixtures, and recursive rejection of
+  commercial, privacy, provider, source, and provenance data.
+- 2f33b1c: Add the strict provider-neutral `booking.session.v1` action request union for
+  update, quote, hold, commit, abandon, and renew, including revision and
+  idempotency semantics, action-specific fields, JSON Schema, fixtures, and docs.
+- 795a7ab: Add typed alternate template declarations and deterministic platform-owned
+  assignment validation and resolution across vertical, resource type, taxonomy,
+  and individual-resource scopes. Build metadata v3 carries the declarations,
+  while page contexts expose only the resolved template id.
+
 ## 0.1.0-alpha.14
 
 ### Minor Changes
