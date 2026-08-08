@@ -92,6 +92,7 @@ export {
   type ThemeSectionPreset,
   type ThemeSeo,
   type ThemeSite,
+  type ThemeTemplate,
   type TourDetailContext,
   type TourIndexContext,
   themeBlockSchema,
@@ -110,6 +111,7 @@ export {
   themeRouteSchema,
   themeSectionPresetSchema,
   themeSectionSchema,
+  themeTemplateSchema,
   tourDetailContextSchema,
   tourIndexContextSchema,
   upgradeThemeContextResponse,
@@ -132,6 +134,18 @@ export {
   THEME_EDITOR_CONTEXT_KEY,
   type ThemeEditorContext,
 } from "./provenance.js";
+export {
+  checkThemeTemplateAssignments,
+  resolveThemeTemplate,
+  type ThemeTemplateAssignment,
+  ThemeTemplateAssignmentError,
+  type ThemeTemplateAssignmentIssue,
+  type ThemeTemplateAssignmentValidationResult,
+  type ThemeTemplateResolutionTarget,
+  themeTemplateAssignmentSchema,
+  themeTemplateAssignmentsSchema,
+  themeTemplateResolutionTargetSchema,
+} from "./template-assignment.js";
 export {
   createTourFixtureAdapter,
   type TourFixtureAdapter,

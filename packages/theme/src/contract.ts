@@ -245,6 +245,20 @@ export const themeRouteSchema = z.strictObject({
   context: themeContextKindSchema,
 });
 
+/**
+ * An alternate renderer for a page context.
+ *
+ * Route ids are the default templates selected after routing. Additional
+ * templates deliberately have no path: the platform resolves one for the
+ * routed context from operator-owned assignment rules and publishes only its
+ * id to the theme.
+ */
+export const themeTemplateSchema = z.strictObject({
+  id: identifier,
+  name: z.string().min(1),
+  context: themeContextKindSchema,
+});
+
 /** Stable, theme-facing operations. Implementations and provider identities are private. */
 export const THEME_CAPABILITY_IDS = [
   "catalog.search.v1",
@@ -384,6 +398,7 @@ export const themeManifestSchema = z.strictObject({
     .regex(/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/, "Use a semantic version."),
   description: z.string().optional(),
   routes: z.array(themeRouteSchema).min(1),
+  templates: z.array(themeTemplateSchema).max(200).default([]),
   settings: z.array(themeFieldSchema).max(200).default([]),
   sections: z.array(themeSectionSchema).max(200).default([]),
   contentBindings: z.array(themeContentBindingSchema).max(20).default([]),
@@ -451,6 +466,8 @@ export const codeInjectionSchema = z.looseObject({
 const contextBase = {
   locale: localeSchema,
   site: siteSchema,
+  /** Platform-resolved renderer id. Assignment rules and selectors stay private. */
+  templateId: identifier.optional(),
   /** The primary menu flattened to one level, for themes that need no nesting. */
   navigation: navigationSchema.default([]),
   menus: menusSchema.default({}),
@@ -1136,6 +1153,7 @@ export type ThemeBlock = z.infer<typeof themeBlockSchema>;
 export type ThemeSectionPreset = z.infer<typeof themeSectionPresetSchema>;
 export type ThemeSection = z.infer<typeof themeSectionSchema>;
 export type ThemeRoute = z.infer<typeof themeRouteSchema>;
+export type ThemeTemplate = z.infer<typeof themeTemplateSchema>;
 export type ThemeCapabilityId = z.infer<typeof themeCapabilityIdSchema>;
 export type ThemeCapabilityDeclaration = z.infer<
   typeof themeCapabilityDeclarationSchema

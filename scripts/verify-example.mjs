@@ -45,6 +45,9 @@ assert.deepEqual(metadata.routes, [
   { id: "tour-detail", pattern: "/tours/[slug]", context: "tourDetail" },
   { id: "tours", pattern: "/tours", context: "tourIndex" },
 ]);
+assert.deepEqual(metadata.templates, [
+  { id: "tour-feature", name: "Feature tour", context: "tourDetail" },
+]);
 assert.ok(metadata.files.some((file) => file.path === "server/entry.mjs"));
 assert.deepEqual(metadata.runtime, {
   schemaVersion: "voyant.theme.runtime.v1",

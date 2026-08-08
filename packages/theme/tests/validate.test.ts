@@ -139,6 +139,33 @@ describe("checkThemeDefinition", () => {
     expect(codes).toContain("THEME_SECTION_PRESET_SETTING_UNKNOWN");
   });
 
+  it("declares alternate templates by compatible context with globally unique ids", () => {
+    const theme = validTheme();
+    theme.manifest.templates = [
+      { id: "story-feature", name: "Feature story", context: "content" },
+    ];
+    theme.manifest.sections = [
+      {
+        id: "feature-hero",
+        name: "Feature hero",
+        templates: ["story-feature"],
+      },
+    ];
+    expect(checkThemeDefinition(theme).diagnostics).toEqual([]);
+
+    theme.manifest.templates.push({
+      id: "home",
+      name: "Duplicate home",
+      context: "home",
+    });
+    expect(checkThemeDefinition(theme).diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "THEME_IDENTIFIER_DUPLICATE",
+        path: "$.manifest.templates[1].id",
+      }),
+    );
+  });
+
   it("accepts every editor input and resource picker type", () => {
     const theme = validTheme();
     theme.manifest.sections = [
