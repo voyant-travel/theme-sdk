@@ -16,3 +16,10 @@ and keep unknown properties, so a deployed theme survives them.
 `themeContextResponseSchema` validates the versioned publication-reader
 envelope used by server-rendered themes. `@voyant-travel/astro` owns the
 Cloudflare transport; the core contract remains independent of Voyant storage.
+
+Tour themes can validate deterministic live-selling stories with
+`tourSellingFixtureMatrixSchema` and serve them locally with
+`createTourFixtureAdapter`. The reference matrix is
+[`fixtures/tour-selling.json`](../../fixtures/tour-selling.json); it stays
+outside immutable page fixtures so commercial state never becomes published
+content.

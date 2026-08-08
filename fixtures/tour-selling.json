@@ -1,0 +1,668 @@
+{
+  "version": "v1",
+  "fixtures": [
+    {
+      "id": "index-populated",
+      "surface": "index",
+      "state": "populated",
+      "request": { "method": "GET", "path": "/tours" },
+      "response": {
+        "status": 200,
+        "context": {
+          "kind": "tourIndex",
+          "path": "/tours",
+          "locale": "en",
+          "site": { "name": "Northstar" },
+          "seo": { "title": "Tours" },
+          "title": "Tours",
+          "products": [
+            {
+              "id": "tour-delta",
+              "slug": "danube-delta",
+              "name": "Danube Delta",
+              "bookingMode": "date",
+              "capacityMode": "limited"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "index-empty",
+      "surface": "index",
+      "state": "empty",
+      "request": { "method": "GET", "path": "/tours" },
+      "response": {
+        "status": 200,
+        "context": {
+          "kind": "tourIndex",
+          "path": "/tours",
+          "locale": "en",
+          "site": { "name": "Northstar" },
+          "seo": { "title": "Tours" },
+          "title": "Tours",
+          "products": []
+        }
+      }
+    },
+    {
+      "id": "index-error",
+      "surface": "index",
+      "state": "error",
+      "request": { "method": "GET", "path": "/tours" },
+      "response": {
+        "status": 502,
+        "error": {
+          "kind": "error",
+          "code": "provider_error",
+          "message": "Catalog temporarily unavailable.",
+          "retryable": true
+        }
+      }
+    },
+    {
+      "id": "detail-rich",
+      "surface": "detail",
+      "state": "rich",
+      "request": { "method": "GET", "path": "/tours/danube-delta" },
+      "response": {
+        "status": 200,
+        "context": {
+          "kind": "tourDetail",
+          "path": "/tours/danube-delta",
+          "slug": "danube-delta",
+          "locale": "en",
+          "site": { "name": "Northstar" },
+          "seo": { "title": "Danube Delta" },
+          "title": "Danube Delta",
+          "product": {
+            "id": "tour-delta",
+            "slug": "danube-delta",
+            "name": "Danube Delta",
+            "shortDescription": "Four days among reed beds and pelicans.",
+            "descriptionHtml": "<p>Travel slowly through the delta.</p>",
+            "bookingMode": "date",
+            "capacityMode": "limited",
+            "categories": [
+              { "id": "nature", "name": "Nature", "slug": "nature" }
+            ],
+            "tags": [{ "id": "small-group", "name": "Small group" }],
+            "destinations": [
+              { "id": "delta", "slug": "danube-delta", "name": "Danube Delta" }
+            ],
+            "locations": [
+              {
+                "id": "tulcea",
+                "locationType": "meeting_point",
+                "title": "Tulcea harbour"
+              }
+            ],
+            "media": [
+              {
+                "id": "boat",
+                "mediaType": "image",
+                "name": "Delta boat",
+                "url": "/delta.jpg"
+              }
+            ],
+            "features": [
+              {
+                "id": "guide",
+                "featureType": "included",
+                "title": "Local guide"
+              }
+            ],
+            "faqs": [
+              {
+                "id": "weather",
+                "question": "What should I pack?",
+                "answer": "Layers and sun protection."
+              }
+            ],
+            "itinerary": {
+              "id": "delta-four-days",
+              "name": "Four days",
+              "days": [{ "id": "day-one", "dayNumber": 1, "title": "Tulcea" }]
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "detail-minimal",
+      "surface": "detail",
+      "state": "minimal",
+      "request": { "method": "GET", "path": "/tours/danube-delta" },
+      "response": {
+        "status": 200,
+        "context": {
+          "kind": "tourDetail",
+          "path": "/tours/danube-delta",
+          "slug": "danube-delta",
+          "locale": "en",
+          "site": { "name": "Northstar" },
+          "seo": { "title": "Danube Delta" },
+          "title": "Danube Delta",
+          "product": {
+            "id": "tour-delta",
+            "slug": "danube-delta",
+            "name": "Danube Delta",
+            "bookingMode": "date",
+            "capacityMode": "limited"
+          }
+        }
+      }
+    },
+    {
+      "id": "detail-not-found",
+      "surface": "detail",
+      "state": "notFound",
+      "request": { "method": "GET", "path": "/tours/missing" },
+      "response": {
+        "status": 404,
+        "error": {
+          "kind": "error",
+          "code": "not_found",
+          "message": "Tour not found.",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "id": "detail-unavailable",
+      "surface": "detail",
+      "state": "unavailable",
+      "request": { "method": "GET", "path": "/tours/danube-delta" },
+      "response": {
+        "status": 503,
+        "error": {
+          "kind": "error",
+          "code": "unavailable",
+          "message": "Tour is not currently available.",
+          "retryable": true
+        }
+      }
+    },
+    {
+      "id": "offer-priced",
+      "surface": "live",
+      "state": "priced",
+      "capability": "catalog.pricing.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/catalog/pricing",
+        "body": { "productId": "tour-delta", "optionId": "morning" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 200,
+        "body": {
+          "kind": "offer",
+          "offerId": "offer-1",
+          "productId": "tour-delta",
+          "total": { "amountMinor": 12500, "currency": "EUR" },
+          "expiresAt": "2030-01-01T10:15:00Z"
+        }
+      }
+    },
+    {
+      "id": "offer-unpriced",
+      "surface": "live",
+      "state": "unpriced",
+      "capability": "catalog.pricing.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/catalog/pricing",
+        "body": { "productId": "tour-delta" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 422,
+        "body": {
+          "kind": "error",
+          "code": "unpriced",
+          "message": "No current price is available.",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "id": "offer-invalid",
+      "surface": "live",
+      "state": "invalid",
+      "capability": "catalog.pricing.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/catalog/pricing",
+        "body": {}
+      },
+      "result": {
+        "transport": "http",
+        "status": 400,
+        "body": {
+          "kind": "error",
+          "code": "invalid_request",
+          "message": "productId is required.",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "id": "offer-provider-error",
+      "surface": "live",
+      "state": "providerError",
+      "capability": "catalog.pricing.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/catalog/pricing",
+        "body": { "productId": "tour-delta" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 502,
+        "body": {
+          "kind": "error",
+          "code": "provider_error",
+          "message": "Pricing provider failed.",
+          "retryable": true
+        }
+      }
+    },
+    {
+      "id": "availability-open",
+      "surface": "live",
+      "state": "available",
+      "capability": "catalog.availability.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/catalog/availability",
+        "body": { "productId": "tour-delta" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 200,
+        "body": {
+          "kind": "availability",
+          "productId": "tour-delta",
+          "options": [
+            {
+              "id": "morning",
+              "startsAt": "2030-01-02T08:00:00Z",
+              "remaining": 4
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "availability-sold-out",
+      "surface": "live",
+      "state": "soldOut",
+      "capability": "catalog.availability.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/catalog/availability",
+        "body": { "productId": "tour-delta" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 409,
+        "body": {
+          "kind": "error",
+          "code": "sold_out",
+          "message": "No places remain.",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "id": "availability-invalid",
+      "surface": "live",
+      "state": "invalid",
+      "capability": "catalog.availability.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/catalog/availability",
+        "body": {}
+      },
+      "result": {
+        "transport": "http",
+        "status": 400,
+        "body": {
+          "kind": "error",
+          "code": "invalid_request",
+          "message": "productId is required.",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "id": "availability-provider-error",
+      "surface": "live",
+      "state": "providerError",
+      "capability": "catalog.availability.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/catalog/availability",
+        "body": { "productId": "tour-delta" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 502,
+        "body": {
+          "kind": "error",
+          "code": "provider_error",
+          "message": "Availability provider failed.",
+          "retryable": true
+        }
+      }
+    },
+    {
+      "id": "booking-created",
+      "surface": "live",
+      "state": "created",
+      "capability": "booking.session.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/booking/session",
+        "body": { "offerId": "offer-1", "idempotencyKey": "create-1" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 201,
+        "body": {
+          "kind": "bookingSession",
+          "sessionId": "session-1",
+          "revision": 0,
+          "status": "draft",
+          "expiresAt": "2030-01-01T10:30:00Z"
+        }
+      }
+    },
+    {
+      "id": "booking-held",
+      "surface": "live",
+      "state": "held",
+      "capability": "booking.session.v1",
+      "request": {
+        "method": "PATCH",
+        "path": "/v1/public/theme/booking/session",
+        "body": { "sessionId": "session-1", "revision": 0, "action": "hold" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 200,
+        "body": {
+          "kind": "bookingSession",
+          "sessionId": "session-1",
+          "revision": 1,
+          "status": "held",
+          "expiresAt": "2030-01-01T10:30:00Z"
+        }
+      }
+    },
+    {
+      "id": "booking-committed",
+      "surface": "live",
+      "state": "committed",
+      "capability": "booking.session.v1",
+      "request": {
+        "method": "PATCH",
+        "path": "/v1/public/theme/booking/session",
+        "body": { "sessionId": "session-1", "revision": 1, "action": "commit" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 200,
+        "body": {
+          "kind": "bookingSession",
+          "sessionId": "session-1",
+          "revision": 2,
+          "status": "committed",
+          "expiresAt": "2030-01-01T10:30:00Z"
+        }
+      }
+    },
+    {
+      "id": "booking-missing",
+      "surface": "live",
+      "state": "missing",
+      "capability": "booking.session.v1",
+      "request": {
+        "method": "PATCH",
+        "path": "/v1/public/theme/booking/session",
+        "body": { "sessionId": "missing", "revision": 0 }
+      },
+      "result": {
+        "transport": "http",
+        "status": 404,
+        "body": {
+          "kind": "error",
+          "code": "session_missing",
+          "message": "Booking session not found.",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "id": "booking-expired",
+      "surface": "live",
+      "state": "expired",
+      "capability": "booking.session.v1",
+      "request": {
+        "method": "PATCH",
+        "path": "/v1/public/theme/booking/session",
+        "body": { "sessionId": "session-old", "revision": 0 }
+      },
+      "result": {
+        "transport": "http",
+        "status": 410,
+        "body": {
+          "kind": "error",
+          "code": "session_expired",
+          "message": "Booking session expired.",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "id": "booking-revision-conflict",
+      "surface": "live",
+      "state": "revisionConflict",
+      "capability": "booking.session.v1",
+      "request": {
+        "method": "PATCH",
+        "path": "/v1/public/theme/booking/session",
+        "body": { "sessionId": "session-1", "revision": 0 }
+      },
+      "result": {
+        "transport": "http",
+        "status": 409,
+        "body": {
+          "kind": "error",
+          "code": "revision_conflict",
+          "message": "Session revision changed.",
+          "retryable": true
+        }
+      }
+    },
+    {
+      "id": "booking-idempotency-conflict",
+      "surface": "live",
+      "state": "idempotencyConflict",
+      "capability": "booking.session.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/booking/session",
+        "body": { "offerId": "offer-2", "idempotencyKey": "create-1" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 409,
+        "body": {
+          "kind": "error",
+          "code": "idempotency_conflict",
+          "message": "Idempotency key was used for another request.",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "id": "booking-provider-error",
+      "surface": "live",
+      "state": "providerError",
+      "capability": "booking.session.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/booking/session",
+        "body": { "offerId": "offer-1" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 502,
+        "body": {
+          "kind": "error",
+          "code": "provider_error",
+          "message": "Booking provider failed.",
+          "retryable": true
+        }
+      }
+    },
+    {
+      "id": "checkout-ready",
+      "surface": "live",
+      "state": "checkoutReady",
+      "capability": "checkout.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/checkout",
+        "body": { "sessionId": "session-1", "idempotencyKey": "checkout-1" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 201,
+        "body": {
+          "kind": "checkout",
+          "checkoutId": "checkout-1",
+          "status": "ready",
+          "redirectUrl": "https://checkout.example/session-1"
+        }
+      }
+    },
+    {
+      "id": "payment-pending",
+      "surface": "live",
+      "state": "paymentPending",
+      "capability": "checkout.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/checkout",
+        "body": { "sessionId": "session-1" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 202,
+        "body": {
+          "kind": "checkout",
+          "checkoutId": "checkout-1",
+          "status": "paymentPending"
+        }
+      }
+    },
+    {
+      "id": "payment-succeeded",
+      "surface": "live",
+      "state": "paymentSucceeded",
+      "capability": "checkout.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/checkout",
+        "body": { "sessionId": "session-1" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 200,
+        "body": {
+          "kind": "checkout",
+          "checkoutId": "checkout-1",
+          "status": "paymentSucceeded"
+        }
+      }
+    },
+    {
+      "id": "payment-failed",
+      "surface": "live",
+      "state": "paymentFailed",
+      "capability": "checkout.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/checkout",
+        "body": { "sessionId": "session-1" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 402,
+        "body": {
+          "kind": "error",
+          "code": "payment_failed",
+          "message": "Payment was declined.",
+          "retryable": false
+        }
+      }
+    },
+    {
+      "id": "checkout-provider-error",
+      "surface": "live",
+      "state": "providerError",
+      "capability": "checkout.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/checkout",
+        "body": { "sessionId": "session-1" }
+      },
+      "result": {
+        "transport": "http",
+        "status": 502,
+        "body": {
+          "kind": "error",
+          "code": "provider_error",
+          "message": "Checkout provider failed.",
+          "retryable": true
+        }
+      }
+    },
+    {
+      "id": "live-network-error",
+      "surface": "live",
+      "state": "networkError",
+      "capability": "booking.session.v1",
+      "request": {
+        "method": "PATCH",
+        "path": "/v1/public/theme/booking/session",
+        "body": { "sessionId": "session-1", "revision": 1 }
+      },
+      "result": {
+        "transport": "networkError",
+        "code": "timeout",
+        "message": "The request timed out."
+      }
+    },
+    {
+      "id": "live-malformed-response",
+      "surface": "live",
+      "state": "malformed",
+      "capability": "checkout.v1",
+      "request": {
+        "method": "POST",
+        "path": "/v1/public/theme/checkout",
+        "body": { "sessionId": "session-1" }
+      },
+      "result": {
+        "transport": "malformed",
+        "status": 200,
+        "contentType": "application/json",
+        "rawBody": "{not-json"
+      }
+    }
+  ]
+}
