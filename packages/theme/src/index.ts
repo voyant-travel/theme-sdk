@@ -20,10 +20,6 @@ export {
   bookingSessionUpdateRequestSchema,
 } from "./booking-session.js";
 export {
-  type ShoppingRequestedScope,
-  shoppingRequestedScopeSchema,
-} from "./shopping.js";
-export {
   type CatalogProduct,
   type CatalogProductCategory,
   type CatalogProductDestination,
@@ -159,6 +155,10 @@ export {
   THEME_EDITOR_CONTEXT_KEY,
   type ThemeEditorContext,
 } from "./provenance.js";
+export {
+  type ShoppingRequestedScope,
+  shoppingRequestedScopeSchema,
+} from "./shopping.js";
 export {
   checkThemeTemplateAssignments,
   resolveThemeTemplate,

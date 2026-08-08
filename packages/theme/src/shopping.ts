@@ -10,18 +10,17 @@ const CURRENCY = /^[A-Z]{3}$/;
  * market. Customer identity, provider selection, booking, payment, and FX are
  * server-owned and deliberately have no representation here.
  */
-export const shoppingRequestedScopeSchema = z
-  .strictObject({
-    marketId: z.string().min(1).max(128).optional(),
-    locale: z
-      .string()
-      .regex(LANGUAGE_TAG, "Expected a BCP 47 language tag")
-      .optional(),
-    currency: z
-      .string()
-      .regex(CURRENCY, "Expected an ISO 4217 currency code")
-      .optional(),
-  });
+export const shoppingRequestedScopeSchema = z.strictObject({
+  marketId: z.string().min(1).max(128).optional(),
+  locale: z
+    .string()
+    .regex(LANGUAGE_TAG, "Expected a BCP 47 language tag")
+    .optional(),
+  currency: z
+    .string()
+    .regex(CURRENCY, "Expected an ISO 4217 currency code")
+    .optional(),
+});
 
 export type ShoppingRequestedScope = z.infer<
   typeof shoppingRequestedScopeSchema
