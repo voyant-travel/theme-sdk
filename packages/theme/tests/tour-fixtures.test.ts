@@ -109,6 +109,18 @@ describe("tour selling fixture matrix", () => {
     expect(tourSellingFixtureSchema.safeParse(priced).success).toBe(false);
   });
 
+  it("requires typed booking action bodies for PATCH fixtures", () => {
+    const held = structuredClone(
+      matrix.fixtures.find(
+        (fixture: { id: string }) => fixture.id === "booking-held",
+      ),
+    );
+    expect(tourSellingFixtureSchema.safeParse(held).success).toBe(true);
+
+    delete held.request.body.quoteId;
+    expect(tourSellingFixtureSchema.safeParse(held).success).toBe(false);
+  });
+
   it("returns isolated deterministic fixtures and rejects duplicate ids", () => {
     const adapter = createTourFixtureAdapter(matrix);
     const first = adapter.get("booking-held");
