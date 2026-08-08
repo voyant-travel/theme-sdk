@@ -7,9 +7,13 @@ import {
   contentContextSchema,
   homeContextSchema,
   READABLE_CONTRACT_VERSIONS,
+  THEME_CAPABILITY_IDS,
+  THEME_CAPABILITY_METHODS,
   themeContextResponseSchema,
   themeManifestSchema,
   themePageContextSchema,
+  tourDetailContextSchema,
+  tourIndexContextSchema,
   upgradeThemeContextResponse,
 } from "../src/index.js";
 
@@ -77,6 +81,18 @@ describe("published context forward compatibility", () => {
     expect(parsed.context.menus).toEqual({});
   });
 
+  it.each([
+    "v1alpha2",
+    "v1alpha3",
+  ] as const)("reads an unchanged %s publication envelope", (contractVersion) => {
+    const parsed = themeContextResponseSchema.parse({
+      contractVersion,
+      context: homeContext(),
+    });
+    expect(parsed.contractVersion).toBe(contractVersion);
+    expect(parsed.context.kind).toBe("home");
+  });
+
   it("does not forgive a missing seo at the current version", () => {
     const { seo: _seo, ...withoutSeo } = homeContext();
     const response = { contractVersion: CONTRACT_VERSION, context: withoutSeo };
@@ -109,7 +125,7 @@ describe("published context forward compatibility", () => {
     // bumped past whatever the current one becomes.
     expect(
       themeContextResponseSchema.safeParse({
-        contractVersion: "v1alpha4",
+        contractVersion: "v1alpha5",
         context: homeContext(),
       }).success,
     ).toBe(false);
@@ -341,6 +357,269 @@ describe("collection contexts", () => {
     // Absent rather than empty, so a theme can tell "no definitions were
     // published" from "this collection declares no fields" and fall back.
     expect(index.collection.fields).toBeUndefined();
+  });
+});
+
+function catalogProduct(extra: Record<string, unknown> = {}) {
+  return {
+    id: "tour-transylvania",
+    slug: "transylvania-by-train",
+    name: "Transylvania by train",
+    shortDescription: "A slow journey through the Carpathians.",
+    bookingMode: "itinerary",
+    capacityMode: "limited",
+    categories: [{ id: "rail", name: "Rail", slug: "rail", parentId: null }],
+    tags: [{ id: "small-group", name: "Small group" }],
+    destinations: [
+      { id: "brasov", slug: "brasov", name: "Brașov", parentId: null },
+    ],
+    locations: [],
+    coverMedia: {
+      id: "cover",
+      mediaType: "image",
+      name: "Mountain train",
+      url: "/media/transylvania.jpg",
+      altText: "A mountain train",
+    },
+    media: [],
+    features: [],
+    faqs: [],
+    ...extra,
+  };
+}
+
+function tourContextBase() {
+  return {
+    locale: "en",
+    site: { name: "Northstar" },
+    navigation: [],
+    menus: {},
+    seo: { title: "Tours" },
+    settings: {},
+  };
+}
+
+describe("tour contexts", () => {
+  it("parses canonical index and detail contexts through the page union", () => {
+    const index = themePageContextSchema.parse({
+      ...tourContextBase(),
+      kind: "tourIndex",
+      path: "/tours",
+      title: "Tours",
+      products: [catalogProduct()],
+    });
+    const detail = themePageContextSchema.parse({
+      ...tourContextBase(),
+      kind: "tourDetail",
+      path: "/tours/transylvania-by-train",
+      slug: "transylvania-by-train",
+      title: "Transylvania by train",
+      product: catalogProduct(),
+    });
+
+    expect(index.kind).toBe("tourIndex");
+    expect(detail.kind).toBe("tourDetail");
+  });
+
+  it("keeps the immutable public catalog projection free of commercial snapshots", () => {
+    for (const forbidden of [
+      "price",
+      "priceFrom",
+      "pricing",
+      "sellAmountCents",
+      "sellCurrency",
+      "departures",
+      "nextDeparture",
+      "availability",
+      "requirements",
+      "quote",
+      "booking",
+      "payment",
+      "checkout",
+    ]) {
+      expect(
+        tourDetailContextSchema.safeParse({
+          ...tourContextBase(),
+          kind: "tourDetail",
+          path: "/tours/transylvania-by-train",
+          slug: "transylvania-by-train",
+          title: "Transylvania by train",
+          product: catalogProduct({ [forbidden]: { stale: true } }),
+        }).success,
+        forbidden,
+      ).toBe(false);
+    }
+  });
+
+  it("rejects commercial state attached to the immutable page itself", () => {
+    expect(
+      tourIndexContextSchema.safeParse({
+        ...tourContextBase(),
+        kind: "tourIndex",
+        path: "/tours",
+        title: "Tours",
+        products: [],
+        availability: [],
+      }).success,
+    ).toBe(false);
+  });
+
+  it("accepts a secret-free live capability envelope with relative endpoints", () => {
+    const parsed = tourIndexContextSchema.parse({
+      ...tourContextBase(),
+      kind: "tourIndex",
+      path: "/tours",
+      title: "Tours",
+      products: [],
+      live: {
+        capabilities: [
+          {
+            id: "catalog.search.v1",
+            available: true,
+            methods: ["GET"],
+            endpoint: "/v1/public/theme/catalog-search",
+          },
+          { id: "checkout.v1", available: false, methods: ["POST"] },
+        ],
+      },
+    });
+
+    expect(parsed.live?.capabilities).toHaveLength(2);
+  });
+
+  it("accepts the exact method allowlist for every stable capability", () => {
+    const parsed = tourIndexContextSchema.parse({
+      ...tourContextBase(),
+      kind: "tourIndex",
+      path: "/tours",
+      title: "Tours",
+      products: [],
+      live: {
+        capabilities: THEME_CAPABILITY_IDS.map((id) => ({
+          id,
+          available: true,
+          methods: [...THEME_CAPABILITY_METHODS[id]],
+          endpoint: `/v1/public/theme/${id}`,
+        })),
+      },
+    });
+
+    expect(parsed.live?.capabilities.map(({ id }) => id)).toEqual(
+      THEME_CAPABILITY_IDS,
+    );
+  });
+
+  it.each([
+    "https://api.example/catalog",
+    "//api.example/catalog",
+    "catalog/search",
+    "/v1/public/catalog/search?token=secret",
+  ])("rejects a non-relative capability endpoint: %s", (endpoint) => {
+    expect(
+      tourIndexContextSchema.safeParse({
+        ...tourContextBase(),
+        kind: "tourIndex",
+        path: "/tours",
+        title: "Tours",
+        products: [],
+        live: {
+          capabilities: [
+            {
+              id: "catalog.search.v1",
+              available: true,
+              methods: ["GET"],
+              endpoint,
+            },
+          ],
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects implementation detail or secrets in the live envelope", () => {
+    expect(
+      tourIndexContextSchema.safeParse({
+        ...tourContextBase(),
+        kind: "tourIndex",
+        path: "/tours",
+        title: "Tours",
+        products: [],
+        live: {
+          capabilities: [],
+          provider: "internal-booking-engine",
+          token: "secret",
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      tourIndexContextSchema.safeParse({
+        ...tourContextBase(),
+        kind: "tourIndex",
+        path: "/tours",
+        title: "Tours",
+        products: [],
+        live: {
+          capabilities: [
+            {
+              id: "checkout.v1",
+              available: true,
+              methods: ["POST"],
+              endpoint: "/v1/public/theme/checkout",
+              token: "secret",
+            },
+          ],
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a method outside a capability's stable allowlist", () => {
+    expect(
+      tourIndexContextSchema.safeParse({
+        ...tourContextBase(),
+        kind: "tourIndex",
+        path: "/tours",
+        title: "Tours",
+        products: [],
+        live: {
+          capabilities: [
+            {
+              id: "catalog.search.v1",
+              available: true,
+              methods: ["POST"],
+              endpoint: "/v1/public/theme/catalog-search",
+            },
+          ],
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it.each([
+    { available: true },
+    {
+      available: false,
+      endpoint: "/v1/public/theme/catalog-search",
+    },
+  ])("requires endpoints exactly when a capability is available", (state) => {
+    expect(
+      tourIndexContextSchema.safeParse({
+        ...tourContextBase(),
+        kind: "tourIndex",
+        path: "/tours",
+        title: "Tours",
+        products: [],
+        live: {
+          capabilities: [
+            {
+              id: "catalog.search.v1",
+              methods: ["GET"],
+              ...state,
+            },
+          ],
+        },
+      }).success,
+    ).toBe(false);
   });
 });
 

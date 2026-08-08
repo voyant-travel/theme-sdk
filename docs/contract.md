@@ -1,9 +1,10 @@
-# v1alpha2 theme contract
+# v1alpha4 theme contract
 
 A `theme.config.ts` default-exports the result of `defineTheme`. It contains:
 
 - a package-like identity and semantic version;
-- routes mapped to `home`, `content`, or `notFound` contexts;
+- routes mapped to page contexts, including canonical `tourIndex` and
+  `tourDetail` contexts;
 - a minimal alpha settings and section-field vocabulary;
 - local fixtures for every context;
 - optional argv arrays used by local build and development tooling.
@@ -15,6 +16,42 @@ public URL hierarchy.
 The context is the rendering boundary. A production publication can provide the
 same context shape as local fixtures, so theme code remains independent of data
 storage and delivery internals.
+
+## Tours and live capabilities
+
+Tour pages use the canonical `/tours` (`tourIndex`) and `/tours/[slug]`
+(`tourDetail`) routes. Declaring either requires the pair. The validator rejects
+non-canonical patterns and any dynamic or rest route that can also match those
+paths, so a publication has one unambiguous owner for each tour URL.
+
+Immutable tour contexts carry `CatalogProduct`, the stable public catalog
+projection: identity, slug, name, editorial copy, booking/capacity modes,
+product type, taxonomy, destinations, locations, media, features, FAQs, and an
+optional itinerary. They never carry price, departures, availability, requirements,
+quote, booking, checkout, or payment snapshots. Those values change without a
+publication and must stay live.
+
+A theme declares the operations it uses in `manifest.capabilities`:
+
+| Capability id | Methods | Purpose |
+| --- | --- | --- |
+| `catalog.search.v1` | `GET` | Search the public catalog |
+| `catalog.product-detail.v1` | `GET` | Refresh a public product projection |
+| `catalog.pricing.v1` | `POST` | Resolve current pricing |
+| `catalog.availability.v1` | `POST` | Resolve current availability/departures |
+| `catalog.requirements.v1` | `POST` | Resolve current participant requirements |
+| `catalog.markets.v1` | `GET` | Discover supported selling markets |
+| `booking.session.v1` | `POST`, `PATCH` | Start and continue a scoped booking session |
+| `checkout.v1` | `POST` | Hand off to checkout |
+
+Declarations contain only `{ id, required? }` and are closed to catch typos.
+At runtime, `context.live.capabilities` reports
+`{ id, available, methods, endpoint? }`. Each capability has a fixed method
+allowlist (`GET`, `POST`, and/or `PATCH` as appropriate). Endpoints are
+platform-generated, same-origin paths beginning with `/v1/public/`;
+absolute and protocol-relative origins are invalid. The envelope contains no
+provider names, credentials, tokens, internal bindings, or implementation
+configuration.
 
 ## Open contexts, closed authoring
 
@@ -76,7 +113,8 @@ and `content_entry`; the last requires `content_type`. The legacy `boolean` and
 `image` literals remain readable.
 
 The build digest commits to declaration order with keys in the position
-`routes`, `settings`, `sections`, `contentBindings`, `outputDirectory`. Preset
+`routes`, `settings`, `sections`, `contentBindings`, `capabilities`,
+`outputDirectory`. Preset
 setting maps are JSON and are canonicalized recursively: array order is kept,
 while every object is rebuilt with keys in ascending UTF-16 code-unit order.
 
@@ -139,6 +177,6 @@ both silently break the analytics and consent tags operators depend on.
 The context is a theme-facing projection, not Voyant's internal model. It says
 what a page needs to render and nothing about how content is stored.
 
-Schemas live under `schemas/v1alpha2`. Breaking experiments require a new
+Schemas live under `schemas/v1alpha4`. Breaking experiments require a new
 contract version; additive context fields do not. Stable diagnostic codes can
 be consumed by CI and agents.

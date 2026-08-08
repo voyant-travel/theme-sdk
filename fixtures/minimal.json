@@ -53,6 +53,92 @@
       "body": "This page proves the content context without a network dependency."
     }
   ],
+  "tourIndex": {
+    "kind": "tourIndex",
+    "path": "/tours",
+    "locale": "en",
+    "site": { "name": "Northstar Travel" },
+    "navigation": [{ "label": "Home", "href": "/" }],
+    "menus": { "primary": [{ "label": "Home", "href": "/" }] },
+    "seo": { "title": "Tours", "noIndex": false },
+    "settings": { "accent": "ocean" },
+    "title": "Tours",
+    "products": [
+      {
+        "id": "danube-delta",
+        "slug": "danube-delta",
+        "name": "The Danube delta",
+        "shortDescription": "Reed beds, quiet channels, and village guesthouses.",
+        "bookingMode": "itinerary",
+        "capacityMode": "limited",
+        "categories": [{ "id": "nature", "name": "Nature", "slug": "nature" }],
+        "tags": [{ "id": "small-group", "name": "Small group" }],
+        "destinations": [
+          { "id": "tulcea", "slug": "tulcea", "name": "Tulcea" }
+        ],
+        "locations": [],
+        "coverMedia": {
+          "id": "delta-cover",
+          "mediaType": "image",
+          "name": "Danube delta",
+          "url": "/danube-delta.jpg",
+          "altText": "A boat among reeds"
+        },
+        "media": [],
+        "features": [],
+        "faqs": []
+      }
+    ],
+    "live": {
+      "capabilities": [
+        {
+          "id": "catalog.search.v1",
+          "available": true,
+          "methods": ["GET"],
+          "endpoint": "/v1/public/theme/catalog-search"
+        }
+      ]
+    }
+  },
+  "tourDetail": [
+    {
+      "kind": "tourDetail",
+      "path": "/tours/danube-delta",
+      "slug": "danube-delta",
+      "locale": "en",
+      "site": { "name": "Northstar Travel" },
+      "navigation": [{ "label": "Tours", "href": "/tours" }],
+      "menus": { "primary": [{ "label": "Tours", "href": "/tours" }] },
+      "seo": { "title": "The Danube delta", "noIndex": false },
+      "settings": { "accent": "ocean" },
+      "title": "The Danube delta",
+      "product": {
+        "id": "danube-delta",
+        "slug": "danube-delta",
+        "name": "The Danube delta",
+        "shortDescription": "Reed beds, quiet channels, and village guesthouses.",
+        "descriptionHtml": "<p>Explore Europe’s largest wetland by small boat.</p>",
+        "bookingMode": "itinerary",
+        "capacityMode": "limited",
+        "categories": [{ "id": "nature", "name": "Nature", "slug": "nature" }],
+        "tags": [{ "id": "small-group", "name": "Small group" }],
+        "destinations": [
+          { "id": "tulcea", "slug": "tulcea", "name": "Tulcea" }
+        ],
+        "locations": [],
+        "coverMedia": {
+          "id": "delta-cover",
+          "mediaType": "image",
+          "name": "Danube delta",
+          "url": "/danube-delta.jpg",
+          "altText": "A boat among reeds"
+        },
+        "media": [],
+        "features": [],
+        "faqs": []
+      }
+    }
+  ],
   "notFound": {
     "kind": "notFound",
     "path": "/404",

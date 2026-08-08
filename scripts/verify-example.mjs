@@ -30,6 +30,8 @@ assert.deepEqual(metadata.routes, [
   { id: "home", pattern: "/", context: "home" },
   { id: "journal-entry", pattern: "/journal/[...path]", context: "content" },
   { id: "not-found", pattern: "/404", context: "notFound" },
+  { id: "tour-detail", pattern: "/tours/[slug]", context: "tourDetail" },
+  { id: "tours", pattern: "/tours", context: "tourIndex" },
 ]);
 assert.ok(metadata.files.some((file) => file.path === "server/entry.mjs"));
 assert.deepEqual(metadata.runtime, {

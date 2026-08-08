@@ -115,6 +115,10 @@ describe("createThemeBuildMetadata", () => {
         ],
       },
     ];
+    theme.manifest.capabilities = [
+      { id: "catalog.search.v1" },
+      { id: "checkout.v1", required: false },
+    ];
     const checked = checkThemeDefinition(theme);
     const root = await mkdtemp(path.join(tmpdir(), "voyant-bindings-"));
     if (!checked.theme) throw new Error("Test setup failed.");
@@ -128,13 +132,20 @@ describe("createThemeBuildMetadata", () => {
     });
 
     expect(metadata.contentBindings?.[0]?.fields[0]?.required).toBe(true);
+    expect(metadata.capabilities).toEqual([
+      { id: "catalog.search.v1", required: true },
+      { id: "checkout.v1", required: false },
+    ]);
     // The position is part of what the digest commits to, and the platform
     // rebuilds the object in this order to verify it.
     const keys = Object.keys(metadata);
     expect(keys.indexOf("sections")).toBe(keys.indexOf("settings") + 1);
     expect(keys.indexOf("contentBindings")).toBe(keys.indexOf("sections") + 1);
-    expect(keys.indexOf("outputDirectory")).toBe(
+    expect(keys.indexOf("capabilities")).toBe(
       keys.indexOf("contentBindings") + 1,
+    );
+    expect(keys.indexOf("outputDirectory")).toBe(
+      keys.indexOf("capabilities") + 1,
     );
   });
 
@@ -205,11 +216,12 @@ describe("createThemeBuildMetadata", () => {
           {}) as object,
       ),
     ).toEqual(["alpha", "zebra"]);
-    expect(Object.keys(metadata).slice(3, 8)).toEqual([
+    expect(Object.keys(metadata).slice(3, 9)).toEqual([
       "routes",
       "settings",
       "sections",
       "contentBindings",
+      "capabilities",
       "outputDirectory",
     ]);
     expect(Object.keys(metadata.sections[0] ?? {})).toEqual([
