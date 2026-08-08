@@ -156,6 +156,10 @@ export {
   type ThemeEditorContext,
 } from "./provenance.js";
 export {
+  type ShoppingRequestedScope,
+  shoppingRequestedScopeSchema,
+} from "./shopping.js";
+export {
   checkThemeTemplateAssignments,
   resolveThemeTemplate,
   type ThemeTemplateAssignment,

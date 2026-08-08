@@ -271,6 +271,8 @@ export const THEME_CAPABILITY_IDS = [
   "cruise.sailing.v1",
   "cruise.pricing.v1",
   "cruise.quote.v1",
+  "shopping.search.v1",
+  "shopping.trip-selections.v1",
   "booking.session.v1",
   "checkout.v1",
 ] as const;
@@ -294,6 +296,8 @@ export const THEME_CAPABILITY_METHODS = {
   "cruise.sailing.v1": ["GET"],
   "cruise.pricing.v1": ["POST"],
   "cruise.quote.v1": ["POST"],
+  "shopping.search.v1": ["POST"],
+  "shopping.trip-selections.v1": ["POST", "PATCH"],
   "booking.session.v1": ["POST", "PATCH"],
   "checkout.v1": ["POST"],
 } as const satisfies Record<

@@ -59,6 +59,8 @@ export default defineTheme({
       { id: "cruise.sailing.v1" },
       { id: "cruise.pricing.v1" },
       { id: "cruise.quote.v1" },
+      { id: "shopping.search.v1" },
+      { id: "shopping.trip-selections.v1" },
       { id: "booking.session.v1" },
       { id: "checkout.v1" },
     ],
