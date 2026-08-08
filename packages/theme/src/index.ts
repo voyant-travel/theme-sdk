@@ -20,6 +20,10 @@ export {
   bookingSessionUpdateRequestSchema,
 } from "./booking-session.js";
 export {
+  type ShoppingRequestedScope,
+  shoppingRequestedScopeSchema,
+} from "./shopping.js";
+export {
   type CatalogProduct,
   type CatalogProductCategory,
   type CatalogProductDestination,
