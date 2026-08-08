@@ -53,6 +53,38 @@ absolute and protocol-relative origins are invalid. The envelope contains no
 provider names, credentials, tokens, internal bindings, or implementation
 configuration.
 
+### Deterministic selling fixtures
+
+`fixtures/tour-selling.json` is the reference matrix for UI stories, theme
+previews, and contract tests. Validate custom matrices with
+`tourSellingFixtureMatrixSchema`, then use `createTourFixtureAdapter(matrix)`
+to select a scenario by its explicit id. `adapter.respond(id)` returns an HTTP
+`Response`, preserves deliberately malformed bodies verbatim, or throws
+`TourFixtureNetworkError` for a transport failure. It never interprets a magic
+query parameter or forwards a fixture selector to a live provider.
+
+The matrix covers:
+
+- populated, empty, and failed indexes;
+- rich, minimal, not-found, and unavailable details;
+- priced/unpriced offers and available/sold-out inventory;
+- invalid requests and provider failures for pricing and availability;
+- booking creation, hold, commit, missing/expired sessions, revision conflicts,
+  and idempotency conflicts;
+- checkout readiness, pending/succeeded/failed payment, network failure, and a
+  malformed upstream response.
+
+Fixture declarations and live result bodies are closed schemas. Success bodies
+use only provider-neutral identifiers, integer minor-unit money, revisions,
+statuses, and timestamps. Provider payloads must be adapted at the platform
+boundary; provider names and credentials are never valid fixture fields.
+
+Page fixtures remain ordinary immutable `tourIndex` and `tourDetail` contexts.
+Commercial values live only under a fixture's `surface: "live"` response and
+therefore cannot be copied into a publication object. The fixture protocol is
+versioned independently as `v1`; adding it does not change the v1alpha4 page
+context wire version.
+
 ## Open contexts, closed authoring
 
 A theme is an immutable release; the publication it reads is not. Voyant grows

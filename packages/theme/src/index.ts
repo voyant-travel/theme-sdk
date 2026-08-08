@@ -111,6 +111,20 @@ export {
   type ThemeEditorContext,
 } from "./provenance.js";
 export {
+  createTourFixtureAdapter,
+  type TourFixtureAdapter,
+  type TourFixtureError,
+  TourFixtureNetworkError,
+  type TourFixtureResult,
+  type TourSellingFixture,
+  type TourSellingFixtureMatrix,
+  tourFixtureErrorCodeSchema,
+  tourFixtureErrorSchema,
+  tourFixtureResultSchema,
+  tourSellingFixtureMatrixSchema,
+  tourSellingFixtureSchema,
+} from "./tour-fixtures.js";
+export {
   checkThemeDefinition,
   type ThemeValidationResult,
   validateThemeDefinition,
