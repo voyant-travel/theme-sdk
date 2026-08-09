@@ -79,7 +79,9 @@
               },
               {
                 "if": {
-                  "properties": { "id": { "const": "shopping.trip-booking.v1" } }
+                  "properties": {
+                    "id": { "const": "shopping.trip-booking.v1" }
+                  }
                 },
                 "then": { "properties": { "methods": { "const": ["POST"] } } }
               },

@@ -156,10 +156,10 @@ export {
   type ThemeEditorContext,
 } from "./provenance.js";
 export {
+  type ShoppingRequestedScope,
   type ShoppingTripBookingRequest,
   type ShoppingTripBookingResponse,
   type ShoppingTripBookingResult,
-  type ShoppingRequestedScope,
   shoppingRequestedScopeSchema,
   shoppingTripBookingRequestSchema,
   shoppingTripBookingResponseSchema,
