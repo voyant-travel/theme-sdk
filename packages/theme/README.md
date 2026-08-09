@@ -30,6 +30,14 @@ content.
 session `revision` and an `idempotencyKey` for update, quote, hold, commit,
 abandon, and renew actions while rejecting runtime aliases and provider paths.
 
+`shoppingRequestedScopeSchema` validates the only managed-shopping preferences
+a browser may choose: `marketId`, `locale`, and uppercase `currency`. Shopping
+capability routes remain same-origin and provider-neutral; customer ownership,
+booking-engine choice, payments, and FX stay server-owned.
+`shoppingTripBookingRequestSchema` closes the separate itinerary-booking input
+to an opaque selection reference, its expected revision, and an idempotency
+key; its managed Booking Session continues through `booking.session.v1`.
+
 Themes declare alternate context-compatible renderers in `manifest.templates`.
 The platform validates and resolves its vertical, resource-type, taxonomy, and
 individual-resource assignments with `checkThemeTemplateAssignments` and

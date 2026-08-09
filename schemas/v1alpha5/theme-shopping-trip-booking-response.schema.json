@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.voyant.travel/theme/v1alpha5/theme-shopping-trip-booking-response.schema.json",
+  "title": "Voyant shopping.trip-booking.v1 response v1alpha5",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["data"],
+  "properties": {
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome"],
+      "properties": {
+        "bookingSessionCapability": {
+          "type": "string",
+          "pattern": "^bcap_[A-Za-z0-9_-]{43,}$"
+        },
+        "outcome": {
+          "type": "object",
+          "required": ["kind"],
+          "properties": { "kind": { "type": "string", "minLength": 1 } }
+        }
+      }
+    }
+  }
+}

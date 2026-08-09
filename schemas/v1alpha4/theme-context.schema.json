@@ -63,6 +63,30 @@
               },
               {
                 "if": {
+                  "properties": { "id": { "const": "shopping.search.v1" } }
+                },
+                "then": { "properties": { "methods": { "const": ["POST"] } } }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "id": { "const": "shopping.trip-selections.v1" }
+                  }
+                },
+                "then": {
+                  "properties": { "methods": { "const": ["POST", "PATCH"] } }
+                }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "id": { "const": "shopping.trip-booking.v1" }
+                  }
+                },
+                "then": { "properties": { "methods": { "const": ["POST"] } } }
+              },
+              {
+                "if": {
                   "properties": { "id": { "const": "catalog.search.v1" } }
                 },
                 "then": { "properties": { "methods": { "const": ["GET"] } } }
@@ -124,6 +148,9 @@
         "catalog.availability.v1",
         "catalog.requirements.v1",
         "catalog.markets.v1",
+        "shopping.search.v1",
+        "shopping.trip-selections.v1",
+        "shopping.trip-booking.v1",
         "booking.session.v1",
         "checkout.v1"
       ]

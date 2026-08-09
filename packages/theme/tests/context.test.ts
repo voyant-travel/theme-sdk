@@ -518,6 +518,59 @@ describe("tour contexts", () => {
     );
   });
 
+  it("accepts the coordinated same-origin shopping capability routes", () => {
+    const parsed = tourIndexContextSchema.parse({
+      ...tourContextBase(),
+      kind: "tourIndex",
+      path: "/tours",
+      title: "Tours",
+      products: [],
+      live: {
+        capabilities: [
+          {
+            id: "shopping.search.v1",
+            available: true,
+            methods: ["POST"],
+            endpoint: "/v1/public/theme/shopping/search",
+          },
+          {
+            id: "shopping.trip-selections.v1",
+            available: true,
+            methods: ["POST", "PATCH"],
+            endpoint: "/v1/public/theme/shopping/trip-selections",
+          },
+          {
+            id: "shopping.trip-booking.v1",
+            available: true,
+            methods: ["POST"],
+            endpoint: "/v1/public/theme/shopping/trip-selections/book",
+          },
+        ],
+      },
+    });
+
+    expect(parsed.live?.capabilities).toEqual([
+      {
+        id: "shopping.search.v1",
+        available: true,
+        methods: ["POST"],
+        endpoint: "/v1/public/theme/shopping/search",
+      },
+      {
+        id: "shopping.trip-selections.v1",
+        available: true,
+        methods: ["POST", "PATCH"],
+        endpoint: "/v1/public/theme/shopping/trip-selections",
+      },
+      {
+        id: "shopping.trip-booking.v1",
+        available: true,
+        methods: ["POST"],
+        endpoint: "/v1/public/theme/shopping/trip-selections/book",
+      },
+    ]);
+  });
+
   it.each([
     "https://api.example/catalog",
     "//api.example/catalog",

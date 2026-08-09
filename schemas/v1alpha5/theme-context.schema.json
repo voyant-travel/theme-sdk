@@ -80,6 +80,9 @@
         "cruise.sailing.v1",
         "cruise.pricing.v1",
         "cruise.quote.v1",
+        "shopping.search.v1",
+        "shopping.trip-selections.v1",
+        "shopping.trip-booking.v1",
         "booking.session.v1",
         "checkout.v1"
       ]
@@ -137,12 +140,24 @@
                         "catalog.requirements.v1",
                         "cruise.pricing.v1",
                         "cruise.quote.v1",
+                        "shopping.search.v1",
+                        "shopping.trip-booking.v1",
                         "checkout.v1"
                       ]
                     }
                   }
                 },
                 "then": { "properties": { "methods": { "const": ["POST"] } } }
+              },
+              {
+                "if": {
+                  "properties": {
+                    "id": { "const": "shopping.trip-selections.v1" }
+                  }
+                },
+                "then": {
+                  "properties": { "methods": { "const": ["POST", "PATCH"] } }
+                }
               },
               {
                 "if": {

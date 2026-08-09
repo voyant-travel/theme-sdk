@@ -42,6 +42,9 @@ A theme declares the operations it uses in `manifest.capabilities`:
 | `catalog.availability.v1` | `POST` | Resolve current availability/departures |
 | `catalog.requirements.v1` | `POST` | Resolve current participant requirements |
 | `catalog.markets.v1` | `GET` | Discover supported selling markets |
+| `shopping.search.v1` | `POST` | Run provider-neutral, cross-vertical shopping search |
+| `shopping.trip-selections.v1` | `POST`, `PATCH` | Create and revise an opaque Trip selection |
+| `shopping.trip-booking.v1` | `POST` | Freeze an opaque Trip revision into a managed Booking Session |
 | `booking.session.v1` | `POST`, `PATCH` | Start and continue a scoped booking session |
 | `checkout.v1` | `POST` | Hand off to checkout |
 
@@ -99,6 +102,41 @@ await fetch(capability.endpoint, {
 The platform continues to understand the earlier actionless update spelling
 for already-published themes. New themes should always use the explicit
 `action: "update"` member of this union.
+
+### Managed shopping
+
+The shopping capabilities are additive to v1alpha5 and do not change the
+page-context version. Voyant Platform exposes them only at the same-origin
+theme routes below and maps them to the corresponding public Storefront routes:
+
+| Capability id | Theme route | Storefront route |
+| --- | --- | --- |
+| `shopping.search.v1` | `POST /v1/public/theme/shopping/search` | `POST /v1/public/shopping/search` |
+| `shopping.trip-selections.v1` | `POST`, `PATCH /v1/public/theme/shopping/trip-selections` | `POST`, `PATCH /v1/public/shopping/trip-selections` |
+| `shopping.trip-booking.v1` | `POST /v1/public/theme/shopping/trip-selections/book` | `POST /v1/public/shopping/trip-selections/book` |
+
+Use `shoppingRequestedScopeSchema` for the only values a browser may choose:
+an optional `marketId`, BCP 47 `locale`, and uppercase ISO 4217 `currency`.
+The schema is closed. Customer or buyer account identity, booking engine,
+provider, source, channel, booking, payment, native money, and FX selectors are
+not theme inputs. The platform and active Storefront runtime resolve ownership
+and supply; the server validates a requested presentation currency and owns all
+conversion and FX provenance.
+
+Trip selections are opaque, revisioned live state. A theme passes the request
+body to the declared capability endpoint and uses the returned revision; it
+does not persist provider payloads or reconstruct booking state in a page
+context. Platform and Storefront enforce same-origin proof for both Trip
+selection methods.
+
+To book the complete itinerary, validate the closed body with
+`shoppingTripBookingRequestSchema` and post it to `shopping.trip-booking.v1`.
+It contains only `selectionRef`, `expectedRevision`, and `idempotencyKey`.
+The response preserves Storefront's Booking Session outcome and, for an
+anonymous shopper, its `bookingSessionCapability`; subsequent lifecycle
+actions continue through `booking.session.v1`. The theme never receives a Trip
+snapshot id and never chooses a provider, account, payment implementation, or
+FX rate.
 
 ### Deterministic selling fixtures
 
