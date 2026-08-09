@@ -273,6 +273,7 @@ export const THEME_CAPABILITY_IDS = [
   "cruise.quote.v1",
   "shopping.search.v1",
   "shopping.trip-selections.v1",
+  "shopping.trip-booking.v1",
   "booking.session.v1",
   "checkout.v1",
 ] as const;
@@ -298,6 +299,7 @@ export const THEME_CAPABILITY_METHODS = {
   "cruise.quote.v1": ["POST"],
   "shopping.search.v1": ["POST"],
   "shopping.trip-selections.v1": ["POST", "PATCH"],
+  "shopping.trip-booking.v1": ["POST"],
   "booking.session.v1": ["POST", "PATCH"],
   "checkout.v1": ["POST"],
 } as const satisfies Record<

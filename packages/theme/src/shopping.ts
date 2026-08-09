@@ -25,3 +25,37 @@ export const shoppingRequestedScopeSchema = z.strictObject({
 export type ShoppingRequestedScope = z.infer<
   typeof shoppingRequestedScopeSchema
 >;
+
+/** The closed browser input that freezes one opaque Trip revision server-side. */
+export const shoppingTripBookingRequestSchema = z.strictObject({
+  selectionRef: z.string().min(16).max(512),
+  expectedRevision: z.number().int().min(0),
+  idempotencyKey: z.string().min(8).max(128),
+});
+
+/**
+ * The Booking Session contract owns the outcome members. This forward-
+ * compatible wrapper preserves that outcome and types the anonymous
+ * capability returned by the managed runtime.
+ */
+export const shoppingTripBookingResultSchema = z.strictObject({
+  bookingSessionCapability: z
+    .string()
+    .regex(/^bcap_[A-Za-z0-9_-]{43,}$/)
+    .optional(),
+  outcome: z.looseObject({ kind: z.string().min(1) }),
+});
+
+export const shoppingTripBookingResponseSchema = z.strictObject({
+  data: shoppingTripBookingResultSchema,
+});
+
+export type ShoppingTripBookingRequest = z.infer<
+  typeof shoppingTripBookingRequestSchema
+>;
+export type ShoppingTripBookingResult = z.infer<
+  typeof shoppingTripBookingResultSchema
+>;
+export type ShoppingTripBookingResponse = z.infer<
+  typeof shoppingTripBookingResponseSchema
+>;

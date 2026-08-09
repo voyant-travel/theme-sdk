@@ -539,6 +539,12 @@ describe("tour contexts", () => {
             methods: ["POST", "PATCH"],
             endpoint: "/v1/public/theme/shopping/trip-selections",
           },
+          {
+            id: "shopping.trip-booking.v1",
+            available: true,
+            methods: ["POST"],
+            endpoint: "/v1/public/theme/shopping/trip-selections/book",
+          },
         ],
       },
     });
@@ -555,6 +561,12 @@ describe("tour contexts", () => {
         available: true,
         methods: ["POST", "PATCH"],
         endpoint: "/v1/public/theme/shopping/trip-selections",
+      },
+      {
+        id: "shopping.trip-booking.v1",
+        available: true,
+        methods: ["POST"],
+        endpoint: "/v1/public/theme/shopping/trip-selections/book",
       },
     ]);
   });

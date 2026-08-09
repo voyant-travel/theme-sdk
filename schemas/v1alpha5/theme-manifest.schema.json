@@ -75,7 +75,7 @@
     "contentBindings": { "type": "array", "maxItems": 20, "default": [] },
     "capabilities": {
       "type": "array",
-      "maxItems": 14,
+      "maxItems": 15,
       "default": [],
       "items": {
         "type": "object",
@@ -96,6 +96,7 @@
               "cruise.quote.v1",
               "shopping.search.v1",
               "shopping.trip-selections.v1",
+              "shopping.trip-booking.v1",
               "booking.session.v1",
               "checkout.v1"
             ]

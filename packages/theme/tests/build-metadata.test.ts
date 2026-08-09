@@ -122,6 +122,7 @@ describe("createThemeBuildMetadata", () => {
       { id: "catalog.search.v1" },
       { id: "shopping.search.v1" },
       { id: "shopping.trip-selections.v1" },
+      { id: "shopping.trip-booking.v1" },
       { id: "checkout.v1", required: false },
     ];
     const checked = checkThemeDefinition(theme);
@@ -144,6 +145,7 @@ describe("createThemeBuildMetadata", () => {
       { id: "catalog.search.v1", required: true },
       { id: "shopping.search.v1", required: true },
       { id: "shopping.trip-selections.v1", required: true },
+      { id: "shopping.trip-booking.v1", required: true },
       { id: "checkout.v1", required: false },
     ]);
     // The position is part of what the digest commits to, and the platform
