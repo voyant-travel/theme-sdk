@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.voyant.travel/theme/v1/theme-template-assignments.schema.json",
+  "title": "Voyant theme template assignments v1",
+  "description": "Platform-owned template assignments. These declarations never appear in a published page context.",
+  "type": "array",
+  "maxItems": 10000,
+  "items": {
+    "oneOf": [
+      { "$ref": "#/$defs/vertical" },
+      { "$ref": "#/$defs/resourceType" },
+      { "$ref": "#/$defs/taxonomy" },
+      { "$ref": "#/$defs/resource" }
+    ]
+  },
+  "$defs": {
+    "context": {
+      "enum": [
+        "home",
+        "content",
+        "notFound",
+        "collectionIndex",
+        "collectionEntry",
+        "tourIndex",
+        "tourDetail",
+        "cruiseIndex",
+        "cruiseDetail",
+        "shipDetail",
+        "sailingDetail"
+      ]
+    },
+    "platformId": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "templateId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "vertical": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "context", "verticalId", "templateId"],
+      "properties": {
+        "scope": { "const": "vertical" },
+        "context": { "$ref": "#/$defs/context" },
+        "verticalId": { "$ref": "#/$defs/platformId" },
+        "templateId": { "$ref": "#/$defs/templateId" }
+      }
+    },
+    "resourceType": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "context",
+        "verticalId",
+        "resourceTypeId",
+        "templateId"
+      ],
+      "properties": {
+        "scope": { "const": "resourceType" },
+        "context": { "$ref": "#/$defs/context" },
+        "verticalId": { "$ref": "#/$defs/platformId" },
+        "resourceTypeId": { "$ref": "#/$defs/platformId" },
+        "templateId": { "$ref": "#/$defs/templateId" }
+      }
+    },
+    "taxonomy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "context",
+        "verticalId",
+        "taxonomyId",
+        "termId",
+        "templateId"
+      ],
+      "properties": {
+        "scope": { "const": "taxonomy" },
+        "context": { "$ref": "#/$defs/context" },
+        "verticalId": { "$ref": "#/$defs/platformId" },
+        "taxonomyId": { "$ref": "#/$defs/platformId" },
+        "termId": { "$ref": "#/$defs/platformId" },
+        "priority": { "type": "integer", "default": 0 },
+        "templateId": { "$ref": "#/$defs/templateId" }
+      }
+    },
+    "resource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope",
+        "context",
+        "verticalId",
+        "resourceTypeId",
+        "resourceId",
+        "templateId"
+      ],
+      "properties": {
+        "scope": { "const": "resource" },
+        "context": { "$ref": "#/$defs/context" },
+        "verticalId": { "$ref": "#/$defs/platformId" },
+        "resourceTypeId": { "$ref": "#/$defs/platformId" },
+        "resourceId": { "$ref": "#/$defs/platformId" },
+        "templateId": { "$ref": "#/$defs/templateId" }
+      }
+    }
+  }
+}

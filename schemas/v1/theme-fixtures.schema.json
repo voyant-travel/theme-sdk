@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.voyant.travel/theme/v1/theme-fixtures.schema.json",
+  "title": "Voyant theme fixtures v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["home", "content", "notFound"],
+  "properties": {
+    "home": { "$ref": "theme-context.schema.json#/$defs/home" },
+    "content": {
+      "type": "array",
+      "items": { "$ref": "theme-context.schema.json#/$defs/content" },
+      "default": []
+    },
+    "notFound": { "$ref": "theme-context.schema.json#/$defs/notFound" },
+    "tourIndex": { "$ref": "theme-context.schema.json#/$defs/tourIndex" },
+    "tourDetail": {
+      "type": "array",
+      "items": { "$ref": "theme-context.schema.json#/$defs/tourDetail" },
+      "default": []
+    },
+    "cruiseIndex": { "$ref": "theme-context.schema.json#/$defs/cruiseIndex" },
+    "cruiseDetail": {
+      "type": "array",
+      "items": { "$ref": "theme-context.schema.json#/$defs/cruiseDetail" },
+      "default": []
+    },
+    "shipDetail": {
+      "type": "array",
+      "items": { "$ref": "theme-context.schema.json#/$defs/shipDetail" },
+      "default": []
+    },
+    "sailingDetail": {
+      "type": "array",
+      "items": { "$ref": "theme-context.schema.json#/$defs/sailingDetail" },
+      "default": []
+    }
+  }
+}

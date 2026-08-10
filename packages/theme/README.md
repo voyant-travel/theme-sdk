@@ -1,18 +1,18 @@
 # `@voyant-travel/theme`
 
-The experimental public theme contract for Voyant. Define a theme with
+The stable public theme contract for Voyant. Define a theme with
 `defineTheme`, validate objects with `checkThemeDefinition`, or load and operate
 on a project through `@voyant-travel/theme/tooling`.
 
-The `v1alpha5` contract retains the v1alpha4 tour surface and adds canonical
-cruise, ship, and sailing contexts with recursively commercial- and
-privacy-safe publication projections. See
+The `v1` contract stabilizes the v1alpha5 tour, cruise, ship, sailing,
+managed-shopping, opaque Trip, and Book-all surfaces with recursively
+commercial- and privacy-safe publication projections. See
 [the contract guide](../../docs/contract.md#cruises).
 
-The `v1alpha5` field vocabulary is intentionally minimal and will evolve before
-v1. Themes should switch explicitly when a later contract version is introduced.
-Additive context fields do not need one: published contexts parse permissively
-and keep unknown properties, so a deployed theme survives them.
+Stable authoring fields and context discriminants will not be removed or change
+meaning within v1. Additive context fields do not require a new contract
+version: published contexts parse permissively and keep unknown properties, so
+a deployed theme survives them.
 
 `themeContextResponseSchema` validates the versioned publication-reader
 envelope used by server-rendered themes. `@voyant-travel/astro` owns the

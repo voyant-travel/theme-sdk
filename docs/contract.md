@@ -1,4 +1,4 @@
-# v1alpha5 theme contract
+# v1 theme contract
 
 A `theme.config.ts` default-exports the result of `defineTheme`. It contains:
 
@@ -105,7 +105,7 @@ for already-published themes. New themes should always use the explicit
 
 ### Managed shopping
 
-The shopping capabilities are additive to v1alpha5 and do not change the
+The shopping capabilities are part of v1 and do not change the
 page-context version. Voyant Platform exposes them only at the same-origin
 theme routes below and maps them to the corresponding public Storefront routes:
 
@@ -172,7 +172,7 @@ context wire version.
 
 ## Cruises
 
-The v1alpha5 contract adds a second tourism graph without declaring stable v1:
+The v1 contract includes the second tourism graph proven during v1alpha5:
 `cruiseIndex` at `/cruises`, `cruiseDetail` at `/cruises/[slug]`,
 `shipDetail` at `/ships/[slug]`, and `sailingDetail` at
 `/sailings/[slug]`. Declaring any one requires exactly one of all four. Dynamic
@@ -350,7 +350,10 @@ both silently break the analytics and consent tags operators depend on.
 The context is a theme-facing projection, not Voyant's internal model. It says
 what a page needs to render and nothing about how content is stored.
 
-Schemas live under `schemas/v1alpha5`; v1alpha4 schemas remain published for
-tour compatibility. Breaking experiments require a new
-contract version; additive context fields do not. Stable diagnostic codes can
-be consumed by CI and agents.
+Schemas live under `schemas/v1`; alpha schemas remain published for existing
+theme releases. Within v1, Voyant may add optional context fields and new
+capability identifiers; existing fields, discriminants, routes, authoring
+semantics, and diagnostic meanings are not removed or reinterpreted. A breaking
+wire or authoring change requires `v2`. Readers retain all v1 alpha envelope
+versions so immutable themes and publications can cross a rollout safely.
+Stable diagnostic codes can be consumed by CI and agents.

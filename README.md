@@ -4,10 +4,10 @@ Public, versioned contracts and Astro tooling for building Voyant storefront
 themes. The SDK is deliberately theme-facing: themes render published context
 objects and do not depend on Voyant Cloud services, databases, or internal APIs.
 
-> `v1alpha5` is experimental. Field kinds and context shapes are the smallest
-> useful developer loop, not an exhaustive block or commerce model. Published
-> contexts are forward compatible: Voyant can add fields without breaking a
-> theme that was built before they existed.
+`v1` is the stable public contract for tour, cruise, managed-shopping, Trip,
+and Book-all themes. Published context objects remain forward compatible:
+Voyant may add fields, but changing or removing a stable field requires a new
+major contract version.
 
 ## Try the example
 

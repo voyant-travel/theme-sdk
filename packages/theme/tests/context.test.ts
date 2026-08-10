@@ -93,6 +93,7 @@ describe("published context forward compatibility", () => {
     "v1alpha2",
     "v1alpha3",
     "v1alpha4",
+    "v1alpha5",
   ] as const)("reads an unchanged %s publication envelope", (contractVersion) => {
     const parsed = themeContextResponseSchema.parse({
       contractVersion,
