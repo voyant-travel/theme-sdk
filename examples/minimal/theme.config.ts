@@ -4,7 +4,7 @@ import fixtures from "../../fixtures/minimal.json";
 const parsedFixtures = themeFixturesSchema.parse(fixtures);
 
 export default defineTheme({
-  contractVersion: "v1alpha5",
+  contractVersion: "v1",
   manifest: {
     id: "minimal",
     name: "Minimal Voyant Theme",

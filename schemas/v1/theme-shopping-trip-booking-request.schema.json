@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.voyant.travel/theme/v1/theme-shopping-trip-booking-request.schema.json",
+  "title": "Voyant shopping.trip-booking.v1 request v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["selectionRef", "expectedRevision", "idempotencyKey"],
+  "properties": {
+    "selectionRef": { "type": "string", "minLength": 16, "maxLength": 512 },
+    "expectedRevision": { "type": "integer", "minimum": 0 },
+    "idempotencyKey": { "type": "string", "minLength": 8, "maxLength": 128 }
+  }
+}

@@ -231,7 +231,7 @@ describe("cruise publication contexts", () => {
     expect(context.live?.capabilities).toHaveLength(6);
   });
 
-  it("keeps v1alpha4 publications readable without declaring stable v1", () => {
+  it("keeps v1alpha4 publications readable after stabilizing v1", () => {
     expect(
       themeContextResponseSchema.parse({
         contractVersion: "v1alpha4",
@@ -244,6 +244,6 @@ describe("cruise publication contexts", () => {
         },
       }).contractVersion,
     ).toBe("v1alpha4");
-    expect(CONTRACT_VERSION).toBe("v1alpha5");
+    expect(CONTRACT_VERSION).toBe("v1");
   });
 });

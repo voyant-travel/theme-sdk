@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** The version a theme built against this release declares and requests. */
-export const CONTRACT_VERSION = "v1alpha5" as const;
+export const CONTRACT_VERSION = "v1" as const;
 
 /**
  * Envelope versions this release can read, newest last.
@@ -24,6 +24,7 @@ export const READABLE_CONTRACT_VERSIONS = [
   "v1alpha2",
   "v1alpha3",
   "v1alpha4",
+  "v1alpha5",
   CONTRACT_VERSION,
 ] as const;
 
