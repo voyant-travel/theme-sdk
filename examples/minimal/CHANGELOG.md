@@ -1,5 +1,33 @@
 # @voyant-travel/example-theme
 
+## 0.0.1
+
+### Patch Changes
+
+- Updated dependencies [0618c04]
+- Updated dependencies [919506b]
+- Updated dependencies [6946d44]
+- Updated dependencies [4ac8356]
+- Updated dependencies [ad99b9e]
+- Updated dependencies [19c1c13]
+- Updated dependencies [0be949b]
+- Updated dependencies [4a6df7a]
+- Updated dependencies [1684138]
+- Updated dependencies [9c31d1c]
+- Updated dependencies [a91b2bb]
+- Updated dependencies [2f33b1c]
+- Updated dependencies [795a7ab]
+- Updated dependencies [b2b4ec5]
+- Updated dependencies [f8cc458]
+- Updated dependencies [4c71b14]
+- Updated dependencies [e41c384]
+- Updated dependencies [d4878a3]
+- Updated dependencies [6061535]
+- Updated dependencies [7683165]
+- Updated dependencies [773ddfa]
+  - @voyant-travel/theme@1.0.0
+  - @voyant-travel/astro@1.0.0
+
 ## 0.0.1-alpha.16
 
 ### Patch Changes
