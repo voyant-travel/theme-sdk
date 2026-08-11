@@ -4,6 +4,7 @@ import {
   PUBLICATION_BINDING_NAMES,
   PUBLICATION_REQUEST_HEADERS,
   PUBLICATION_RESPONSE_HEADERS,
+  resolvePublicationSystemRoute,
   ThemeRuntimeError,
   type VoyantPublicationBindings,
 } from "../src/runtime.js";
@@ -384,5 +385,70 @@ describe("createThemeContextResolver", () => {
       resolve("https://north.example/stories/north", env),
     ).resolves.toMatchObject({ kind: "content" });
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("resolvePublicationSystemRoute", () => {
+  it("proxies platform discovery routes with only trusted publication headers", async () => {
+    const fetch = vi.fn<VoyantPublicationBindings["PUBLICATION"]["fetch"]>(
+      async () =>
+        new Response("Not found", {
+          status: 404,
+          headers: { "cache-control": "private, no-store" },
+        }),
+    );
+    const response = await resolvePublicationSystemRoute(
+      new Request("https://north.example/sitemap.xml?ignored=1", {
+        headers: {
+          authorization: "Bearer browser-token",
+          cookie: "session=browser",
+          "x-voyant-site-id": "spoofed",
+        },
+      }),
+      bindings(fetch),
+    );
+
+    expect(response?.status).toBe(404);
+    expect(response?.headers.get("cache-control")).toBe("private, no-store");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const request = fetch.mock.calls[0]?.[0];
+    expect(request).toBeInstanceOf(Request);
+    if (!(request instanceof Request)) throw new Error("Expected a Request.");
+    expect(request.url).toBe("https://north.example/sitemap.xml?ignored=1");
+    expect(request.method).toBe("GET");
+    expect(request.headers.get("accept")).toBe("application/xml");
+    expect(request.headers.get("authorization")).toBe("Bearer scoped-token");
+    expect(request.headers.get("cookie")).toBeNull();
+    expect(request.headers.get(PUBLICATION_REQUEST_HEADERS.siteId)).toBe(
+      "site_123",
+    );
+  });
+
+  it("preserves HEAD and leaves non-system or local-fixture routes alone", async () => {
+    const fetch = vi.fn(async (request: RequestInfo | URL) => {
+      expect(request).toBeInstanceOf(Request);
+      expect((request as Request).method).toBe("HEAD");
+      expect((request as Request).headers.get("accept")).toBe("text/plain");
+      return new Response(null, { status: 200 });
+    });
+
+    await expect(
+      resolvePublicationSystemRoute(
+        new Request("https://north.example/robots.txt", { method: "HEAD" }),
+        bindings(fetch),
+      ),
+    ).resolves.toMatchObject({ status: 200 });
+    await expect(
+      resolvePublicationSystemRoute(
+        new Request("https://north.example/stories/north"),
+        bindings(fetch),
+      ),
+    ).resolves.toBeUndefined();
+    await expect(
+      resolvePublicationSystemRoute(
+        new Request("https://localhost:4321/sitemap.xml"),
+      ),
+    ).resolves.toBeUndefined();
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 });
