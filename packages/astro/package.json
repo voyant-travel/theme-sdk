@@ -17,6 +17,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./middleware": "./src/middleware.ts",
+    "./system-middleware": "./src/system-middleware.ts",
     "./runtime": "./src/runtime.ts",
     "./virtual": "./src/virtual.d.ts"
   },
@@ -53,6 +54,11 @@
         "types": "./dist/middleware.d.ts",
         "import": "./dist/middleware.js",
         "default": "./dist/middleware.js"
+      },
+      "./system-middleware": {
+        "types": "./dist/system-middleware.d.ts",
+        "import": "./dist/system-middleware.js",
+        "default": "./dist/system-middleware.js"
       },
       "./runtime": {
         "types": "./dist/runtime.d.ts",
