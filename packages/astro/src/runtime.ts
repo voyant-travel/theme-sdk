@@ -143,6 +143,7 @@ export function readPublicationBindings(
 function publicationRequest(
   input: string | URL,
   bindings: VoyantPublicationBindings,
+  options: { accept?: string; method?: "GET" | "HEAD" } = {},
 ): Request {
   let url: URL;
   try {
@@ -163,7 +164,7 @@ function publicationRequest(
 
   return new Request(url, {
     headers: {
-      accept: "application/json",
+      accept: options.accept ?? "application/json",
       authorization: `Bearer ${bindings.VOYANT_PUBLICATION_TOKEN}`,
       [PUBLICATION_REQUEST_HEADERS.contractVersion]: CONTRACT_VERSION,
       [PUBLICATION_REQUEST_HEADERS.publicationId]:
@@ -171,8 +172,42 @@ function publicationRequest(
       [PUBLICATION_REQUEST_HEADERS.releaseId]: bindings.VOYANT_THEME_RELEASE_ID,
       [PUBLICATION_REQUEST_HEADERS.siteId]: bindings.VOYANT_SITE_ID,
     },
-    method: "GET",
+    method: options.method ?? "GET",
   });
+}
+
+const PUBLICATION_SYSTEM_PATHS = new Set(["/robots.txt", "/sitemap.xml"]);
+
+/**
+ * Proxies platform-owned discovery documents before an Astro catch-all page
+ * can mistake their text/XML responses for a JSON page context.
+ *
+ * The browser request is never forwarded. A fresh capability-scoped request
+ * is constructed so cookies, caller authorization, and tenant selectors
+ * cannot cross the publication binding boundary.
+ */
+export async function resolvePublicationSystemRoute(
+  request: Request,
+  runtimeEnv?: unknown,
+): Promise<Response | undefined> {
+  const url = new URL(request.url);
+  if (
+    !PUBLICATION_SYSTEM_PATHS.has(url.pathname) ||
+    (request.method !== "GET" && request.method !== "HEAD")
+  ) {
+    return undefined;
+  }
+
+  const bindings = readPublicationBindings(runtimeEnv);
+  if (!bindings) return undefined;
+
+  return bindings.PUBLICATION.fetch(
+    publicationRequest(url, bindings, {
+      accept:
+        url.pathname === "/sitemap.xml" ? "application/xml" : "text/plain",
+      method: request.method,
+    }),
+  );
 }
 
 async function readBoundedResponse(response: Response): Promise<unknown> {

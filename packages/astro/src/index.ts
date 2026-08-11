@@ -70,11 +70,13 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
                   if (id !== RESOLVED_VIRTUAL_ID) return undefined;
                   return [
                     'import { createThemeContextResolver } from "@voyant-travel/astro/runtime";',
+                    'import { resolvePublicationSystemRoute as resolveSystemRoute } from "@voyant-travel/astro/runtime";',
                     'import { env } from "cloudflare:workers";',
                     `export const theme = ${serialized};`,
                     "export const manifest = theme.manifest;",
                     "const resolveContext = createThemeContextResolver(theme);",
                     "export const resolveThemeContext = (input) => resolveContext(input, env);",
+                    "export const resolvePublicationSystemRoute = (request) => resolveSystemRoute(request, env);",
                   ].join("\n");
                 },
               },
@@ -110,6 +112,7 @@ export {
   PUBLICATION_RESPONSE_HEADERS,
   type PublicationFetcher,
   readPublicationBindings,
+  resolvePublicationSystemRoute,
   type ThemeContextResolver,
   ThemeRuntimeError,
   type ThemeRuntimeErrorCode,

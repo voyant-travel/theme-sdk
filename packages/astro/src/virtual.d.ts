@@ -8,4 +8,7 @@ declare module "virtual:voyant-theme" {
   export function resolveThemeContext(
     input: string | URL,
   ): Promise<ThemePageContext>;
+  export function resolvePublicationSystemRoute(
+    request: Request,
+  ): Promise<Response | undefined>;
 }
