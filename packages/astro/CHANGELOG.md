@@ -1,5 +1,12 @@
 # @voyant-travel/astro
 
+## 1.0.1
+
+### Patch Changes
+
+- d2e7b7a: Proxy platform-owned `robots.txt` and `sitemap.xml` responses through the
+  scoped publication binding before Astro catch-all routes resolve page context.
+
 ## 1.0.0
 
 ### Major Changes

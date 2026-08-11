@@ -1,5 +1,12 @@
 # @voyant-travel/example-theme
 
+## 0.0.2
+
+### Patch Changes
+
+- Updated dependencies [d2e7b7a]
+  - @voyant-travel/astro@1.0.1
+
 ## 0.0.1
 
 ### Patch Changes
