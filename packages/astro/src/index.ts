@@ -40,6 +40,13 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
         logger,
       }) => {
         projectRoot = config.root;
+        // Platform-owned discovery documents must run before theme middleware.
+        // A theme may redirect or short-circuit without calling `next()`, and
+        // it must not be able to replace or mutate robots/sitemap responses.
+        addMiddleware({
+          entrypoint: "@voyant-travel/astro/system-middleware",
+          order: "pre",
+        });
         // Operator code injection belongs to every theme, so it is wired here
         // rather than left for a theme author to remember. `post` so it runs
         // after the theme's own middleware and splices the finished document.

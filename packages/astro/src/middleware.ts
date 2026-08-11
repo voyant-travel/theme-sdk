@@ -1,7 +1,4 @@
-import {
-  resolvePublicationSystemRoute,
-  resolveThemeContext,
-} from "virtual:voyant-theme";
+import { resolveThemeContext } from "virtual:voyant-theme";
 import { getThemeEditorContext } from "@voyant-travel/theme";
 
 import { injectThemeEditorBridge } from "./editor-bridge.js";
@@ -23,9 +20,6 @@ export async function onRequest(
   context: { request: Request },
   next: () => Promise<Response>,
 ): Promise<Response> {
-  const systemResponse = await resolvePublicationSystemRoute(context.request);
-  if (systemResponse) return systemResponse;
-
   const response = await next();
   if (!isInjectableDocument(response)) return response;
 
