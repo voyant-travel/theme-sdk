@@ -1,5 +1,12 @@
 # @voyant-travel/astro
 
+## 1.0.2
+
+### Patch Changes
+
+- e713e36: Run publication system-route interception in dedicated pre middleware so theme
+  middleware cannot replace or mutate platform-owned robots and sitemap output.
+
 ## 1.0.1
 
 ### Patch Changes
