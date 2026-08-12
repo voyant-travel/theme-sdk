@@ -187,6 +187,9 @@
         "sortOrder": { "type": "integer" }
       }
     },
+    "coverMedia": {
+      "oneOf": [{ "$ref": "#/$defs/media" }, { "type": "null" }]
+    },
     "port": {
       "allOf": [
         { "$ref": "#/$defs/publicationSafe" },
@@ -201,6 +204,7 @@
             "descriptionHtml": { "type": "string" },
             "latitude": { "type": "number", "minimum": -90, "maximum": 90 },
             "longitude": { "type": "number", "minimum": -180, "maximum": 180 },
+            "coverMedia": { "$ref": "#/$defs/coverMedia" },
             "media": {
               "type": "array",
               "items": { "$ref": "#/$defs/media" },
@@ -227,6 +231,7 @@
               "items": { "type": "string", "minLength": 1 },
               "default": []
             },
+            "coverMedia": { "$ref": "#/$defs/coverMedia" },
             "media": {
               "type": "array",
               "items": { "$ref": "#/$defs/media" },
@@ -250,7 +255,7 @@
             "cruiseLine": { "type": "string", "minLength": 1 },
             "launchedYear": { "type": "integer", "exclusiveMinimum": 0 },
             "deckCount": { "type": "integer", "exclusiveMinimum": 0 },
-            "coverMedia": { "$ref": "#/$defs/media" },
+            "coverMedia": { "$ref": "#/$defs/coverMedia" },
             "media": {
               "type": "array",
               "items": { "$ref": "#/$defs/media" },
@@ -284,6 +289,7 @@
                   "dayNumber": { "type": "integer", "exclusiveMinimum": 0 },
                   "title": { "type": "string", "minLength": 1 },
                   "descriptionHtml": { "type": "string" },
+                  "coverMedia": { "$ref": "#/$defs/coverMedia" },
                   "ports": {
                     "type": "array",
                     "items": { "$ref": "#/$defs/port" },
@@ -344,6 +350,12 @@
             "shipId": { "type": "string", "minLength": 1 },
             "departure": { "$ref": "#/$defs/departure" },
             "itinerary": { "$ref": "#/$defs/itinerary" },
+            "coverMedia": { "$ref": "#/$defs/coverMedia" },
+            "media": {
+              "type": "array",
+              "items": { "$ref": "#/$defs/media" },
+              "default": []
+            },
             "cabinCategories": {
               "type": "array",
               "items": { "$ref": "#/$defs/cabinCategory" },
@@ -365,7 +377,7 @@
             "name": { "type": "string", "minLength": 1 },
             "shortDescription": { "type": "string" },
             "descriptionHtml": { "type": "string" },
-            "coverMedia": { "$ref": "#/$defs/media" },
+            "coverMedia": { "$ref": "#/$defs/coverMedia" },
             "media": {
               "type": "array",
               "items": { "$ref": "#/$defs/media" },

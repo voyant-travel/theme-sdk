@@ -261,6 +261,7 @@
         "name": { "type": "string" },
         "slug": { "type": "string" },
         "description": { "type": ["string", "null"] },
+        "coverMedia": { "$ref": "#/$defs/media" },
         "sortOrder": { "type": "integer" }
       }
     },
@@ -281,6 +282,7 @@
         "destinationType": { "type": "string" },
         "latitude": { "type": ["number", "null"] },
         "longitude": { "type": ["number", "null"] },
+        "coverMedia": { "$ref": "#/$defs/media" },
         "sortOrder": { "type": "integer" }
       }
     },
