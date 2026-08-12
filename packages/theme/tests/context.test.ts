@@ -461,6 +461,42 @@ describe("tour contexts", () => {
     }
   });
 
+  it("gives catalog taxonomy and itinerary days a lead image of their own", () => {
+    const image = {
+      id: "cover-brasov",
+      mediaType: "image",
+      name: "Brașov rooftops",
+      url: "/media/brasov.jpg",
+      altText: "Red rooftops under a wooded ridge",
+    };
+    const detail = tourDetailContextSchema.parse({
+      ...tourContextBase(),
+      kind: "tourDetail",
+      path: "/tours/transylvania-by-train",
+      slug: "transylvania-by-train",
+      title: "Transylvania by train",
+      product: catalogProduct({
+        categories: [
+          { id: "rail", name: "Rail", slug: "rail", coverMedia: image },
+        ],
+        destinations: [
+          { id: "brasov", slug: "brasov", name: "Brașov", coverMedia: image },
+        ],
+        itinerary: {
+          id: "itin",
+          name: "Seven days",
+          days: [{ id: "d1", dayNumber: 1, coverMedia: image }],
+        },
+      }),
+    });
+
+    expect(detail.product.categories[0]?.coverMedia?.url).toBe(image.url);
+    expect(detail.product.destinations[0]?.coverMedia?.altText).toBe(
+      image.altText,
+    );
+    expect(detail.product.itinerary?.days[0]?.coverMedia?.url).toBe(image.url);
+  });
+
   it("rejects commercial state attached to the immutable page itself", () => {
     expect(
       tourIndexContextSchema.safeParse({

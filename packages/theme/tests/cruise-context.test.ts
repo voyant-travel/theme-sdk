@@ -231,6 +231,53 @@ describe("cruise publication contexts", () => {
     expect(context.live?.capabilities).toHaveLength(6);
   });
 
+  it("gives every cruise record a lead image under one name", () => {
+    const image = {
+      id: "m1",
+      mediaType: "image",
+      name: "Aurora at anchor",
+      url: "https://cdn.example/aurora.jpg",
+      altText: "A ship at anchor off a rocky coast",
+    };
+    const parsed = cruiseSailingSchema.parse(
+      sailing({
+        coverMedia: image,
+        media: [image],
+        cabinCategories: [cabin({ coverMedia: image })],
+        itinerary: {
+          id: "mediterranean-light-7n",
+          name: "Mediterranean light",
+          days: [
+            {
+              dayNumber: 1,
+              title: "Athens",
+              coverMedia: image,
+              ports: [port({ coverMedia: image })],
+            },
+          ],
+        },
+      }),
+    );
+
+    expect(parsed.coverMedia?.url).toBe(image.url);
+    expect(parsed.media[0]?.url).toBe(image.url);
+    expect(parsed.cabinCategories[0]?.coverMedia?.altText).toBe(image.altText);
+    expect(parsed.itinerary.days[0]?.coverMedia?.url).toBe(image.url);
+    expect(parsed.itinerary.days[0]?.ports[0]?.coverMedia?.url).toBe(image.url);
+  });
+
+  it("reads an explicitly absent lead image the same way everywhere", () => {
+    const parsed = cruiseSailingSchema.parse(
+      sailing({
+        coverMedia: null,
+        cabinCategories: [cabin({ coverMedia: null })],
+      }),
+    );
+
+    expect(parsed.coverMedia).toBeNull();
+    expect(parsed.cabinCategories[0]?.coverMedia).toBeNull();
+  });
+
   it("keeps v1alpha4 publications readable after stabilizing v1", () => {
     expect(
       themeContextResponseSchema.parse({

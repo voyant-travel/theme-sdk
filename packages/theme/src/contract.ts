@@ -669,12 +669,36 @@ export const catalogProductTypeSchema = z.looseObject({
   description: z.string().nullable().optional(),
 });
 
+export const catalogProductMediaSchema = z.looseObject({
+  id: z.string().min(1),
+  mediaType: z.string().min(1),
+  name: z.string().min(1),
+  url: z.string().min(1),
+  mimeType: z.string().nullable().optional(),
+  width: z.number().int().positive().nullable().optional(),
+  height: z.number().int().positive().nullable().optional(),
+  altText: z.string().nullable().optional(),
+  sortOrder: z.number().int().optional(),
+});
+
+/**
+ * The single lead image a theme renders for a record.
+ *
+ * Every record a theme can put on a page declares this under the same name and
+ * with the same nullability, so a component that renders a hero, a card or a
+ * tile reads one field and needs one null check. A record with `media[]` but no
+ * `coverMedia` leaves a theme guessing at `media[0]`; an absent value means the
+ * operator has not chosen one, not that the record cannot have one.
+ */
+const coverMediaSchema = catalogProductMediaSchema.nullable().optional();
+
 export const catalogProductCategorySchema = z.looseObject({
   id: z.string().min(1),
   parentId: z.string().nullable().optional(),
   name: z.string().min(1),
   slug: z.string().min(1),
   description: z.string().nullable().optional(),
+  coverMedia: coverMediaSchema,
   sortOrder: z.number().int().optional(),
 });
 
@@ -692,6 +716,7 @@ export const catalogProductDestinationSchema = z.looseObject({
   destinationType: z.string().min(1).optional(),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
+  coverMedia: coverMediaSchema,
   sortOrder: z.number().int().optional(),
 });
 
@@ -704,18 +729,6 @@ export const catalogProductLocationSchema = z.looseObject({
   countryCode: z.string().nullable().optional(),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
-  sortOrder: z.number().int().optional(),
-});
-
-export const catalogProductMediaSchema = z.looseObject({
-  id: z.string().min(1),
-  mediaType: z.string().min(1),
-  name: z.string().min(1),
-  url: z.string().min(1),
-  mimeType: z.string().nullable().optional(),
-  width: z.number().int().positive().nullable().optional(),
-  height: z.number().int().positive().nullable().optional(),
-  altText: z.string().nullable().optional(),
   sortOrder: z.number().int().optional(),
 });
 
@@ -745,7 +758,13 @@ export const catalogProductItinerarySchema = z.looseObject({
         title: z.string().nullable().optional(),
         description: z.string().nullable().optional(),
         location: z.string().nullable().optional(),
+        /**
+         * @deprecated Read `coverMedia` instead. A bare URL carries no
+         * dimensions and no alt text, so a theme cannot size the image or
+         * describe it. Kept because publications already carry it.
+         */
         thumbnailUrl: z.string().nullable().optional(),
+        coverMedia: coverMediaSchema,
         services: z
           .array(
             z.looseObject({
@@ -776,7 +795,7 @@ export const catalogProductSchema = z
     tags: z.array(catalogProductTagSchema).default([]),
     destinations: z.array(catalogProductDestinationSchema).default([]),
     locations: z.array(catalogProductLocationSchema).default([]),
-    coverMedia: catalogProductMediaSchema.nullable().optional(),
+    coverMedia: coverMediaSchema,
     media: z.array(catalogProductMediaSchema).default([]),
     features: z.array(catalogProductFeatureSchema).default([]),
     faqs: z.array(catalogProductFaqSchema).default([]),
@@ -944,6 +963,7 @@ export const cruisePortSchema = z
     descriptionHtml: z.string().optional(),
     latitude: z.number().min(-90).max(90).optional(),
     longitude: z.number().min(-180).max(180).optional(),
+    coverMedia: coverMediaSchema,
     media: z.array(catalogProductMediaSchema).default([]),
   })
   .superRefine(rejectCruisePublicationLeaks);
@@ -956,6 +976,7 @@ export const cruiseCabinCategorySchema = z
     descriptionHtml: z.string().optional(),
     maxOccupancy: z.number().int().positive().optional(),
     deckNames: z.array(z.string().min(1)).default([]),
+    coverMedia: coverMediaSchema,
     media: z.array(catalogProductMediaSchema).default([]),
   })
   .superRefine(rejectCruisePublicationLeaks);
@@ -969,7 +990,7 @@ export const cruiseShipSchema = z
     cruiseLine: z.string().min(1).optional(),
     launchedYear: z.number().int().positive().optional(),
     deckCount: z.number().int().positive().optional(),
-    coverMedia: catalogProductMediaSchema.optional(),
+    coverMedia: coverMediaSchema,
     media: z.array(catalogProductMediaSchema).default([]),
     cabinCategories: z.array(cruiseCabinCategorySchema).default([]),
   })
@@ -985,6 +1006,7 @@ export const cruiseItinerarySchema = z
           dayNumber: z.number().int().positive(),
           title: z.string().min(1),
           descriptionHtml: z.string().optional(),
+          coverMedia: coverMediaSchema,
           ports: z.array(cruisePortSchema).default([]),
           atSea: z.boolean().default(false),
         }),
@@ -1012,6 +1034,8 @@ export const cruiseSailingSchema = z
     shipId: z.string().min(1),
     departure: cruiseDepartureSchema,
     itinerary: cruiseItinerarySchema,
+    coverMedia: coverMediaSchema,
+    media: z.array(catalogProductMediaSchema).default([]),
     cabinCategories: z.array(cruiseCabinCategorySchema).default([]),
   })
   .superRefine(rejectCruisePublicationLeaks);
@@ -1023,7 +1047,7 @@ export const cruiseSchema = z
     name: z.string().min(1),
     shortDescription: z.string().optional(),
     descriptionHtml: z.string().optional(),
-    coverMedia: catalogProductMediaSchema.optional(),
+    coverMedia: coverMediaSchema,
     media: z.array(catalogProductMediaSchema).default([]),
     ports: z.array(cruisePortSchema).default([]),
     ships: z.array(cruiseShipSchema).default([]),
