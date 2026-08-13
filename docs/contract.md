@@ -18,6 +18,22 @@ The context is the rendering boundary. A production publication can provide the
 same context shape as local fixtures, so theme code remains independent of data
 storage and delivery internals.
 
+## Collections
+
+Collections are operator-defined content sets — news, guides, staff — with
+fields the operator declared, so their shape is theirs rather than Voyant's.
+A routable collection publishes a `collectionIndex` at the base path the
+operator chose and one `collectionEntry` per entry beneath it. Both are
+path-addressed: there is no canonical prefix, because `/blog` and `/stiri` are
+the same collection in two operators' words.
+
+`entry.values` is keyed by the operator's field ids. `collection.fields` gives
+the label, type, and declaration order for those ids, which is what lets a
+theme render an entry the way it was authored instead of humanizing keys and
+sorting them alphabetically. `entry.path` is present only when the entry's
+collection is routable; linking to an entry without one produces a 404 that
+looks deliberate, so check for it.
+
 ## Tours and live capabilities
 
 Tour pages use the canonical `/tours` (`tourIndex`) and `/tours/[slug]`
@@ -169,6 +185,32 @@ Commercial values live only under a fixture's `surface: "live"` response and
 therefore cannot be copied into a publication object. The fixture protocol is
 versioned independently as `v1`; adding it did not change the v1alpha4 page
 context wire version.
+
+## Categories
+
+A theme declares exactly one route with `context: "categoryDetail"` and a
+pattern containing one parameter: `/[category]`, or `/c/[category]` to scope
+it. Unlike `tourIndex` there is no canonical pattern to validate against — the
+operator's own slug is the address, so the theme owns only the namespace it
+sits in and Voyant substitutes the slug, publishing one page per catalog
+category. Declaring zero such routes publishes no category pages, and so does
+declaring two, silently: with two candidate namespaces the platform has no
+address to choose.
+
+Categories are derived from the catalog rather than authored beside it. Every
+product carries `categories[]`, each with a translated slug and an id stable
+across locales, so `/pelerinaje` and `/pilgrimages` resolve from one id — key
+on `category.id`, never the slug. A slug must be a single safe path segment;
+the reader rejects encoded separators and dot segments, so a category whose
+slug is not one is skipped rather than published at an address no request can
+retrieve.
+
+Membership is deliberately not embedded. `catalog.search.v1` already filters by
+`categoryId` and returns live pricing, availability, and paging with it, where
+a baked list would be a second copy of the catalog in every category in every
+locale that is stale the moment the catalog moves. `products` is therefore
+usually absent; treat a publication that carries one as an optimization and
+fall back to the capability.
 
 ## Cruises
 

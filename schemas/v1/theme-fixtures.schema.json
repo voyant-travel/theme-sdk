@@ -13,6 +13,16 @@
       "default": []
     },
     "notFound": { "$ref": "theme-context.schema.json#/$defs/notFound" },
+    "collectionIndex": {
+      "type": "array",
+      "items": { "$ref": "theme-context.schema.json#/$defs/collectionIndex" },
+      "default": []
+    },
+    "collectionEntry": {
+      "type": "array",
+      "items": { "$ref": "theme-context.schema.json#/$defs/collectionEntry" },
+      "default": []
+    },
     "tourIndex": { "$ref": "theme-context.schema.json#/$defs/tourIndex" },
     "tourDetail": {
       "type": "array",
