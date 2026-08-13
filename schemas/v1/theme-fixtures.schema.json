@@ -19,6 +19,11 @@
       "items": { "$ref": "theme-context.schema.json#/$defs/tourDetail" },
       "default": []
     },
+    "categoryDetail": {
+      "type": "array",
+      "items": { "$ref": "theme-context.schema.json#/$defs/categoryDetail" },
+      "default": []
+    },
     "cruiseIndex": { "$ref": "theme-context.schema.json#/$defs/cruiseIndex" },
     "cruiseDetail": {
       "type": "array",

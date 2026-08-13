@@ -1244,6 +1244,7 @@ export const themeFixturesSchema = z.strictObject({
   notFound: notFoundContextSchema,
   tourIndex: tourIndexContextSchema.optional(),
   tourDetail: z.array(tourDetailContextSchema).default([]),
+  categoryDetail: z.array(categoryDetailContextSchema).default([]),
   cruiseIndex: cruiseIndexContextSchema.optional(),
   cruiseDetail: z.array(cruiseDetailContextSchema).default([]),
   shipDetail: z.array(shipDetailContextSchema).default([]),

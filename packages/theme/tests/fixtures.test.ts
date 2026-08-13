@@ -121,4 +121,61 @@ describe("createFixtureRouter", () => {
     );
     expect(router.resolve("/ships/aurora").kind).toBe("shipDetail");
   });
+
+  it("resolves a category fixture at the operator's own address", () => {
+    const theme = validTheme();
+    theme.manifest.routes.push({
+      id: "category",
+      pattern: "/[category]",
+      context: "categoryDetail",
+    });
+    theme.fixtures.categoryDetail = [
+      {
+        kind: "categoryDetail",
+        path: "/pelerinaje",
+        slug: "pelerinaje",
+        locale: "ro-RO",
+        site: { name: "Test" },
+        navigation: [],
+        menus: {},
+        seo: { title: "Pelerinaje" },
+        settings: {},
+        title: "Pelerinaje",
+        category: {
+          id: "cat_pilgrimages",
+          name: "Pelerinaje",
+          slug: "pelerinaje",
+        },
+      },
+    ];
+
+    const checked = checkThemeDefinition(theme);
+    if (!checked.theme) throw new Error("Test setup failed.");
+    const router = createFixtureRouter(checked.theme);
+
+    // The address is the operator's own translated slug, not a canonical path
+    // like /tours, so the fixture is path-addressed exactly as tour and cruise
+    // detail fixtures are.
+    expect(router.resolve("/pelerinaje/")).toMatchObject({
+      kind: "categoryDetail",
+      slug: "pelerinaje",
+    });
+  });
+
+  it("keeps a theme without category fixtures valid and falling through", () => {
+    const checked = checkThemeDefinition(validTheme());
+    if (!checked.theme) throw new Error("Test setup failed.");
+
+    // The slot defaults to empty, so themes written before it existed stay
+    // valid and an unclaimed path still reaches notFound rather than a
+    // half-populated category page.
+    expect(checked.ok).toBe(true);
+    expect(checked.theme.fixtures.categoryDetail).toEqual([]);
+    expect(
+      createFixtureRouter(checked.theme).resolve("/pelerinaje"),
+    ).toMatchObject({
+      kind: "notFound",
+      path: "/pelerinaje",
+    });
+  });
 });

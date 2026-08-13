@@ -17,6 +17,7 @@ export function createFixtureRouter(
     [
       ...theme.fixtures.content,
       ...theme.fixtures.tourDetail,
+      ...theme.fixtures.categoryDetail,
       ...theme.fixtures.cruiseDetail,
       ...theme.fixtures.shipDetail,
       ...theme.fixtures.sailingDetail,
