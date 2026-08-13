@@ -1,5 +1,12 @@
 # @voyant-travel/example-theme
 
+## 0.0.5
+
+### Patch Changes
+
+- Updated dependencies [dfd20dc]
+  - @voyant-travel/theme@1.2.0
+
 ## 0.0.4
 
 ### Patch Changes
