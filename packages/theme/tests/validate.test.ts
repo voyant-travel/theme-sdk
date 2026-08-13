@@ -76,14 +76,6 @@ describe("checkThemeDefinition", () => {
           "path": "$.manifest.routes",
         },
         {
-          "code": "THEME_CONTENT_ROUTE_PARAMETER_MISSING",
-          "path": "$.manifest.routes[0].pattern",
-        },
-        {
-          "code": "THEME_CONTENT_ROUTE_PARAMETER_MISSING",
-          "path": "$.manifest.routes[1].pattern",
-        },
-        {
           "code": "THEME_ROUTE_PATTERN_DUPLICATE",
           "path": "$.manifest.routes[1].pattern",
         },
@@ -329,10 +321,7 @@ describe("checkThemeDefinition", () => {
     );
   });
 
-  it.each([
-    "/tours/[id]",
-    "/[...path]",
-  ])("rejects a route that overlaps the canonical tour routes: %s", (pattern) => {
+  it("rejects a route ambiguous with the canonical tour routes", () => {
     const theme = validTheme();
     theme.manifest.routes.push(
       { id: "tours", pattern: "/tours", context: "tourIndex" },
@@ -341,11 +330,68 @@ describe("checkThemeDefinition", () => {
         pattern: "/tours/[slug]",
         context: "tourDetail",
       },
-      { id: "collision", pattern, context: "content" },
+      // Same shape as /tours/[slug]: two parameters in the same position, so
+      // nothing distinguishes them and a request really could match either.
+      { id: "collision", pattern: "/tours/[id]", context: "content" },
     );
     expect(checkThemeDefinition(theme).diagnostics).toContainEqual(
       expect.objectContaining({ code: "THEME_TOUR_ROUTE_COLLISION" }),
     );
+  });
+
+  it.each([
+    ["a root catch-all", "/[...path]"],
+    ["a root parameter an operator's namespace needs", "/[category]"],
+    ["a deeper catch-all under the tour namespace", "/tours/[...rest]"],
+  ])("admits %s beside the canonical tour routes", (_label, pattern) => {
+    const theme = validTheme();
+    theme.manifest.routes.push(
+      { id: "tours", pattern: "/tours", context: "tourIndex" },
+      { id: "tour-detail", pattern: "/tours/[slug]", context: "tourDetail" },
+      { id: "sibling", pattern, context: "content" },
+    );
+    const result = checkThemeDefinition(theme);
+    expect(
+      result.diagnostics.filter(
+        (diagnostic) => diagnostic.code === "THEME_TOUR_ROUTE_COLLISION",
+      ),
+    ).toEqual([]);
+  });
+
+  it("admits a static top-level content route", () => {
+    const theme = validTheme();
+    theme.manifest.routes.push({
+      id: "about",
+      pattern: "/despre-noi",
+      context: "content",
+    });
+    const result = checkThemeDefinition(theme);
+    expect(result.ok).toBe(true);
+  });
+
+  it("requires a category route to be able to address more than one category", () => {
+    const theme = validTheme();
+    theme.manifest.routes.push({
+      id: "category",
+      pattern: "/pelerinaje",
+      context: "categoryDetail",
+    });
+    expect(checkThemeDefinition(theme).diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "THEME_CATEGORY_ROUTE_PARAMETER_MISSING",
+      }),
+    );
+  });
+
+  it("admits a root-level category route beside the canonical tour routes", () => {
+    const theme = validTheme();
+    theme.manifest.routes.push(
+      { id: "tours", pattern: "/tours", context: "tourIndex" },
+      { id: "tour-detail", pattern: "/tours/[slug]", context: "tourDetail" },
+      { id: "category", pattern: "/[category]", context: "categoryDetail" },
+      { id: "about", pattern: "/despre-noi", context: "content" },
+    );
+    expect(checkThemeDefinition(theme).ok).toBe(true);
   });
 
   function addCruiseRoutes(theme: ReturnType<typeof validTheme>) {
@@ -411,9 +457,8 @@ describe("checkThemeDefinition", () => {
 
   it.each([
     "/cruises/[id]",
-    "/ships/[...path]",
-    "/[...path]",
-  ])("rejects content routes that collide with canonical cruise paths: %s", (pattern) => {
+    "/ships/[other]",
+  ])("rejects content routes ambiguous with canonical cruise paths: %s", (pattern) => {
     const theme = validTheme();
     addCruiseRoutes(theme);
     theme.manifest.routes.push({

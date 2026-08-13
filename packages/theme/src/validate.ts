@@ -113,6 +113,43 @@ function isRestSegment(segment: string): boolean {
   return /^\[\.\.\.[A-Za-z][A-Za-z0-9_]*\]$/.test(segment);
 }
 
+/** A literal beats a parameter, and a parameter beats a rest. */
+function segmentSpecificity(segment: string): number {
+  if (isRestSegment(segment)) return 0;
+  if (isDynamicSegment(segment)) return 1;
+  return 2;
+}
+
+/**
+ * Two patterns conflict only when a request could match either one.
+ *
+ * Overlap alone is not a conflict. `/tours` and `/[category]` both match
+ * `/tours`, but no router is confused by that: the literal is more specific, so
+ * it wins, and `/pelerinaje` falls through to the parameter. This is how Astro
+ * already resolves the file tree a theme builds. Treating overlap as a
+ * collision is what made an operator's own namespace inexpressible — a
+ * root-level category route or a catch-all could not sit beside `/tours` — so
+ * flag only genuine ambiguity, where neither pattern is more specific than the
+ * other at the first segment that distinguishes them.
+ */
+function routePatternsAmbiguous(left: string, right: string): boolean {
+  if (!routePatternsOverlap(left, right)) return false;
+  const a = routeSegments(left);
+  const b = routeSegments(right);
+  for (let index = 0; index < Math.max(a.length, b.length); index += 1) {
+    const aPart = a[index];
+    const bPart = b[index];
+    if (aPart === undefined || bPart === undefined) {
+      // One pattern ran out. The other only still matches through a rest
+      // segment, which is the less specific of the two.
+      return false;
+    }
+    const difference = segmentSpecificity(aPart) - segmentSpecificity(bPart);
+    if (difference !== 0) return false;
+  }
+  return true;
+}
+
 /** Whether two Astro patterns can resolve the same public path. */
 function routePatternsOverlap(left: string, right: string): boolean {
   const a = routeSegments(left);
@@ -266,16 +303,19 @@ export function checkThemeDefinition(
       });
     }
 
+    // One category route serves every category, so its address has to vary.
+    // A literal pattern would render exactly one of them and silently drop
+    // the rest.
     if (
-      route.context === "content" &&
+      route.context === "categoryDetail" &&
       !/\[(?:\.\.\.)?[A-Za-z][A-Za-z0-9_]*\]/.test(route.pattern)
     ) {
       diagnostics.push({
-        code: "THEME_CONTENT_ROUTE_PARAMETER_MISSING",
-        message: "A content route pattern must contain a dynamic parameter.",
+        code: "THEME_CATEGORY_ROUTE_PARAMETER_MISSING",
+        message: "A categoryDetail route pattern must contain a parameter.",
         severity: "error",
         path: `$.manifest.routes[${index}].pattern`,
-        hint: "Use any Astro-style parameter, such as /guides/[entry] or /stories/[...path].",
+        hint: "Use the operator's own namespace, such as /[category], or scope it with /c/[category].",
         source: {
           file: sourceFile,
           path: ["manifest", "routes", index, "pattern"],
@@ -305,7 +345,7 @@ export function checkThemeDefinition(
       for (const [, other] of manifest.routes.slice(0, index).entries()) {
         if (
           route.pattern !== other.pattern &&
-          routePatternsOverlap(route.pattern, other.pattern) &&
+          routePatternsAmbiguous(route.pattern, other.pattern) &&
           (route.context === "tourIndex" ||
             route.context === "tourDetail" ||
             other.context === "tourIndex" ||
@@ -316,7 +356,7 @@ export function checkThemeDefinition(
             message: `Route pattern '${route.pattern}' overlaps tour route '${other.pattern}'.`,
             severity: "error",
             path: `$.manifest.routes[${index}].pattern`,
-            hint: "Reserve /tours and /tours/[slug] for their canonical tour contexts.",
+            hint: "Make one pattern more specific than the other; a literal segment wins over a parameter.",
             source: {
               file: sourceFile,
               path: ["manifest", "routes", index, "pattern"],
@@ -354,7 +394,7 @@ export function checkThemeDefinition(
       for (const other of manifest.routes.slice(0, index)) {
         if (
           route.pattern !== other.pattern &&
-          routePatternsOverlap(route.pattern, other.pattern) &&
+          routePatternsAmbiguous(route.pattern, other.pattern) &&
           (cruiseKinds.includes(
             route.context as (typeof cruiseKinds)[number],
           ) ||
@@ -365,7 +405,7 @@ export function checkThemeDefinition(
             message: `Route pattern '${route.pattern}' overlaps cruise route '${other.pattern}'.`,
             severity: "error",
             path: `$.manifest.routes[${index}].pattern`,
-            hint: "Reserve /cruises, /cruises/[slug], /ships/[slug], and /sailings/[slug] for their canonical cruise contexts.",
+            hint: "Make one pattern more specific than the other; a literal segment wins over a parameter.",
             source: {
               file: sourceFile,
               path: ["manifest", "routes", index, "pattern"],

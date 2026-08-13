@@ -11,6 +11,7 @@
     { "$ref": "../v1alpha4/theme-context.schema.json#/$defs/collectionEntry" },
     { "$ref": "../v1alpha4/theme-context.schema.json#/$defs/tourIndex" },
     { "$ref": "../v1alpha4/theme-context.schema.json#/$defs/tourDetail" },
+    { "$ref": "#/$defs/categoryDetail" },
     { "$ref": "#/$defs/cruiseIndex" },
     { "$ref": "#/$defs/cruiseDetail" },
     { "$ref": "#/$defs/shipDetail" },
@@ -29,6 +30,31 @@
     },
     "tourDetail": {
       "$ref": "../v1alpha4/theme-context.schema.json#/$defs/tourDetail"
+    },
+    "categoryDetail": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "required": ["kind", "path", "slug", "title", "category"],
+          "properties": {
+            "kind": { "const": "categoryDetail" },
+            "path": { "type": "string", "pattern": "^/" },
+            "slug": { "type": "string", "minLength": 1 },
+            "title": { "type": "string", "minLength": 1 },
+            "category": {
+              "$ref": "../v1alpha4/theme-context.schema.json#/$defs/category"
+            },
+            "products": {
+              "type": "array",
+              "default": [],
+              "items": {
+                "$ref": "../v1alpha4/theme-context.schema.json#/$defs/catalogProduct"
+              }
+            }
+          }
+        }
+      ]
     },
     "base": {
       "type": "object",
@@ -56,7 +82,19 @@
         "menus": { "type": "object", "default": {} },
         "navigation": { "type": "array", "default": [] },
         "settings": { "type": "object", "default": {} },
-        "live": { "$ref": "#/$defs/live" }
+        "live": { "$ref": "#/$defs/live" },
+        "alternates": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": ["locale", "path"],
+            "properties": {
+              "locale": { "type": "string", "minLength": 2 },
+              "path": { "type": "string", "pattern": "^/" }
+            }
+          }
+        }
       }
     },
     "publicationSafe": {

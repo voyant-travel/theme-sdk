@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
   CONTRACT_VERSION,
+  categoryDetailContextSchema,
   collectionEntrySchema,
   collectionIndexContextSchema,
   contentContextSchema,
@@ -495,6 +496,86 @@ describe("tour contexts", () => {
       image.altText,
     );
     expect(detail.product.itinerary?.days[0]?.coverMedia?.url).toBe(image.url);
+  });
+
+  it("publishes a category at the operator's own translated address", () => {
+    const pilgrimages = {
+      id: "cat_pilgrimages",
+      name: "Pelerinaje",
+      slug: "pelerinaje",
+      coverMedia: {
+        id: "cover",
+        mediaType: "image",
+        name: "Monastery at dawn",
+        url: "/media/pelerinaje.jpg",
+        altText: "A painted monastery at dawn",
+      },
+    };
+    const context = categoryDetailContextSchema.parse({
+      ...tourContextBase(),
+      kind: "categoryDetail",
+      path: "/pelerinaje",
+      slug: "pelerinaje",
+      title: "Pelerinaje",
+      category: pilgrimages,
+      products: [catalogProduct()],
+      alternates: [
+        { locale: "ro-RO", path: "/pelerinaje" },
+        { locale: "en", path: "/en/pilgrimages" },
+      ],
+    });
+
+    // The address is the operator's, not /tours, and the two locales share no
+    // path component — which is exactly why a theme cannot derive one from the
+    // other and why alternates has to be published.
+    expect(context.path).toBe("/pelerinaje");
+    expect(context.category.id).toBe("cat_pilgrimages");
+    expect(context.products).toHaveLength(1);
+    expect(context.alternates.map(({ path }) => path)).toEqual([
+      "/pelerinaje",
+      "/en/pilgrimages",
+    ]);
+  });
+
+  it("routes a category through the public page union", () => {
+    expect(
+      themePageContextSchema.parse({
+        ...tourContextBase(),
+        kind: "categoryDetail",
+        path: "/city-break",
+        slug: "city-break",
+        title: "City break",
+        category: { id: "cat_city", name: "City break", slug: "city-break" },
+        products: [],
+      }).kind,
+    ).toBe("categoryDetail");
+  });
+
+  it("keeps a category free of commercial snapshots like any other catalog page", () => {
+    expect(
+      categoryDetailContextSchema.safeParse({
+        ...tourContextBase(),
+        kind: "categoryDetail",
+        path: "/pelerinaje",
+        slug: "pelerinaje",
+        title: "Pelerinaje",
+        category: { id: "c", name: "P", slug: "pelerinaje" },
+        products: [],
+        pricing: { from: 1200 },
+      }).success,
+    ).toBe(false);
+  });
+
+  it("defaults alternates to empty so a single-locale theme needs no guard", () => {
+    expect(
+      tourIndexContextSchema.parse({
+        ...tourContextBase(),
+        kind: "tourIndex",
+        path: "/tours",
+        title: "Tours",
+        products: [],
+      }).alternates,
+    ).toEqual([]);
   });
 
   it("rejects commercial state attached to the immutable page itself", () => {

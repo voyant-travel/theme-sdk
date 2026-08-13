@@ -234,6 +234,7 @@ export const themeContextKindSchema = z.enum([
   "collectionEntry",
   "tourIndex",
   "tourDetail",
+  "categoryDetail",
   "cruiseIndex",
   "cruiseDetail",
   "shipDetail",
@@ -484,6 +485,23 @@ const contextBase = {
   settings: z.record(z.string(), z.unknown()).default({}),
   /** Live operations available to this publication; never contains credentials. */
   live: themeLiveSchema.optional(),
+  /**
+   * This same page in every locale that publishes it, for `hreflang`.
+   *
+   * A theme cannot derive these. Slugs are localized, so the Romanian and
+   * English addresses of one page share no path component — `/circuite/x` and
+   * `/en/tours/y` are the same resource. Voyant resolves each locale's address
+   * when it materializes the publication and puts the result here; a locale
+   * that does not publish this page is absent rather than guessed at.
+   */
+  alternates: z
+    .array(
+      z.looseObject({
+        locale: localeSchema,
+        path: z.string().startsWith("/"),
+      }),
+    )
+    .default([]),
 };
 
 export const homeContextSchema = z.looseObject({
@@ -825,6 +843,30 @@ export const tourDetailContextSchema = z
   .superRefine(rejectCommercialSnapshots);
 
 /**
+ * One product category and the products filed under it.
+ *
+ * Operators sell in families — pilgrimages, city breaks, cruises-by-river —
+ * and those families are usually the addresses customers already know and
+ * search for. The category is what a theme needs to render such a page, and
+ * unlike `tourIndex` its `path` is not fixed: the operator's own slug is the
+ * address, and it is translated, so the same category is `/pelerinaje` in one
+ * locale and `/en/pilgrimages` in another. `alternates` ties them together.
+ *
+ * `category.id` is stable across locales; the slug is not. Key on the id.
+ */
+export const categoryDetailContextSchema = z
+  .looseObject({
+    ...contextBase,
+    kind: z.literal("categoryDetail"),
+    path: z.string().startsWith("/"),
+    slug: z.string().min(1),
+    title: z.string().min(1),
+    category: catalogProductCategorySchema,
+    products: z.array(catalogProductSchema).default([]),
+  })
+  .superRefine(rejectCommercialSnapshots);
+
+/**
  * Keys that must never be materialized into an immutable cruise publication.
  *
  * Cruise search, sailing availability, pricing, quoting, booking, and checkout
@@ -1106,6 +1148,7 @@ export const themePageContextSchema = z.discriminatedUnion("kind", [
   collectionEntryContextSchema,
   tourIndexContextSchema,
   tourDetailContextSchema,
+  categoryDetailContextSchema,
   cruiseIndexContextSchema,
   cruiseDetailContextSchema,
   shipDetailContextSchema,
@@ -1205,6 +1248,7 @@ export type CollectionEntryContext = z.infer<
   typeof collectionEntryContextSchema
 >;
 export type CatalogProduct = z.infer<typeof catalogProductSchema>;
+export type CategoryDetailContext = z.infer<typeof categoryDetailContextSchema>;
 export type CatalogProductCategory = z.infer<
   typeof catalogProductCategorySchema
 >;
