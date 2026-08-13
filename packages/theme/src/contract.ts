@@ -843,16 +843,26 @@ export const tourDetailContextSchema = z
   .superRefine(rejectCommercialSnapshots);
 
 /**
- * One product category and the products filed under it.
+ * One product category, at the operator's own address.
  *
  * Operators sell in families — pilgrimages, city breaks, cruises-by-river —
  * and those families are usually the addresses customers already know and
- * search for. The category is what a theme needs to render such a page, and
- * unlike `tourIndex` its `path` is not fixed: the operator's own slug is the
- * address, and it is translated, so the same category is `/pelerinaje` in one
- * locale and `/en/pilgrimages` in another. `alternates` ties them together.
+ * search for. Unlike `tourIndex` this path is not fixed: the operator's own
+ * slug is the address, and it is translated, so the same category is
+ * `/pelerinaje` in one locale and `/en/pilgrimages` in another. `alternates`
+ * ties them together, and `category.id` is stable across locales while the
+ * slug is not — key on the id.
  *
- * `category.id` is stable across locales; the slug is not. Key on the id.
+ * What the publication carries is what only it can know: the address, the
+ * category, and the locales this page exists in. The membership list is not
+ * that. `catalog.search.v1` already filters by `categoryId`, and asking it
+ * gets live pricing and availability and paging for free, where a baked list
+ * would be a second copy that grows the publication by every product in every
+ * category in every locale and is stale the moment the catalog moves.
+ *
+ * `products` is therefore usually absent. A publication may still carry a
+ * listing when a theme needs one rendered without a live call; treat it as an
+ * optimization and fall back to the capability.
  */
 export const categoryDetailContextSchema = z
   .looseObject({
@@ -862,7 +872,7 @@ export const categoryDetailContextSchema = z
     slug: z.string().min(1),
     title: z.string().min(1),
     category: catalogProductCategorySchema,
-    products: z.array(catalogProductSchema).default([]),
+    products: z.array(catalogProductSchema).optional(),
   })
   .superRefine(rejectCommercialSnapshots);
 
