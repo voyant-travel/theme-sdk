@@ -614,6 +614,35 @@ describe("tour contexts", () => {
     expect(parsed.live?.capabilities).toHaveLength(2);
   });
 
+  it("adds no write to the catalog, operator or legal surface", () => {
+    // Everything a theme can call to browse, describe or explain the operator
+    // is a read. Writes stay confined to the pricing/quote/booking/checkout
+    // operations that existed before, so widening what a theme can render
+    // never widens what an anonymous visitor can cause.
+    const readOnly = THEME_CAPABILITY_IDS.filter(
+      (id) =>
+        id.startsWith("operator.") ||
+        id.startsWith("legal.") ||
+        [
+          "catalog.search.v1",
+          "catalog.product-detail.v1",
+          "catalog.markets.v1",
+          "catalog.categories.v1",
+          "catalog.destinations.v1",
+          "catalog.tags.v1",
+          "catalog.product-by-slug.v1",
+          "catalog.departures.v1",
+          "catalog.offers.v1",
+          "catalog.extensions.v1",
+        ].includes(id),
+    );
+
+    expect(readOnly.length).toBeGreaterThan(10);
+    for (const id of readOnly) {
+      expect(THEME_CAPABILITY_METHODS[id], id).toEqual(["GET"]);
+    }
+  });
+
   it("accepts the exact method allowlist for every stable capability", () => {
     const parsed = tourIndexContextSchema.parse({
       ...tourContextBase(),

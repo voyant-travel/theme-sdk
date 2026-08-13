@@ -261,7 +261,21 @@ export const themeTemplateSchema = z.strictObject({
   context: themeContextKindSchema,
 });
 
-/** Stable, theme-facing operations. Implementations and provider identities are private. */
+/**
+ * Stable, theme-facing operations. Implementations and provider identities are
+ * private.
+ *
+ * These are a curated projection of the platform's public API, not the API
+ * itself: Voyant maps each id onto an upstream path it is free to move, and
+ * allowlists the methods and parameters that reach it. A theme therefore reads
+ * an endpoint off `context.live.capabilities` and never hardcodes a path.
+ *
+ * Everything here is a read except the pricing, quote, shopping, booking and
+ * checkout operations that were already here. Public writes — lead capture,
+ * newsletter signup — and anything returning customer data are deliberately
+ * absent: they need abuse controls and a privacy review that a capability id
+ * does not provide on its own.
+ */
 export const THEME_CAPABILITY_IDS = [
   "catalog.search.v1",
   "catalog.product-detail.v1",
@@ -269,6 +283,18 @@ export const THEME_CAPABILITY_IDS = [
   "catalog.availability.v1",
   "catalog.requirements.v1",
   "catalog.markets.v1",
+  "catalog.categories.v1",
+  "catalog.destinations.v1",
+  "catalog.tags.v1",
+  "catalog.product-by-slug.v1",
+  "catalog.departures.v1",
+  "catalog.departure-pricing.v1",
+  "catalog.offers.v1",
+  "catalog.extensions.v1",
+  "operator.profile.v1",
+  "operator.settings.v1",
+  "legal.policy.v1",
+  "legal.terms.v1",
   "cruise.search.v1",
   "cruise.sailing.v1",
   "cruise.pricing.v1",
@@ -295,6 +321,18 @@ export const THEME_CAPABILITY_METHODS = {
   "catalog.availability.v1": ["POST"],
   "catalog.requirements.v1": ["POST"],
   "catalog.markets.v1": ["GET"],
+  "catalog.categories.v1": ["GET"],
+  "catalog.destinations.v1": ["GET"],
+  "catalog.tags.v1": ["GET"],
+  "catalog.product-by-slug.v1": ["GET"],
+  "catalog.departures.v1": ["GET"],
+  "catalog.departure-pricing.v1": ["POST"],
+  "catalog.offers.v1": ["GET"],
+  "catalog.extensions.v1": ["GET"],
+  "operator.profile.v1": ["GET"],
+  "operator.settings.v1": ["GET"],
+  "legal.policy.v1": ["GET"],
+  "legal.terms.v1": ["GET"],
   "cruise.search.v1": ["GET"],
   "cruise.sailing.v1": ["GET"],
   "cruise.pricing.v1": ["POST"],
