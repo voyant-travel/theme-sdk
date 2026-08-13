@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
   CONTRACT_VERSION,
+  catalogProductCategorySchema,
   categoryDetailContextSchema,
   collectionEntrySchema,
   collectionIndexContextSchema,
@@ -531,10 +532,33 @@ describe("tour contexts", () => {
     expect(context.path).toBe("/pelerinaje");
     expect(context.category.id).toBe("cat_pilgrimages");
     expect(context.products).toHaveLength(1);
+    expect(catalogProductCategorySchema.parse(pilgrimages).id).toBe(
+      "cat_pilgrimages",
+    );
     expect(context.alternates.map(({ path }) => path)).toEqual([
       "/pelerinaje",
       "/en/pilgrimages",
     ]);
+  });
+
+  it("leaves membership to the catalog capability rather than the publication", () => {
+    const context = categoryDetailContextSchema.parse({
+      ...tourContextBase(),
+      kind: "categoryDetail",
+      path: "/pelerinaje",
+      slug: "pelerinaje",
+      title: "Pelerinaje",
+      category: {
+        id: "cat_pilgrimages",
+        name: "Pelerinaje",
+        slug: "pelerinaje",
+      },
+    });
+
+    // Absent rather than empty. A theme can tell "this publication carries no
+    // listing, ask catalog.search.v1?categoryId=" from "this category is
+    // genuinely empty", which an empty array would have collapsed together.
+    expect(context.products).toBeUndefined();
   });
 
   it("routes a category through the public page union", () => {

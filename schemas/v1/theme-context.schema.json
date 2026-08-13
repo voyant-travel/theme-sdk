@@ -47,7 +47,6 @@
             },
             "products": {
               "type": "array",
-              "default": [],
               "items": {
                 "$ref": "../v1alpha4/theme-context.schema.json#/$defs/catalogProduct"
               }
