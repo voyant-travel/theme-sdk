@@ -168,6 +168,24 @@ export {
   shoppingTripBookingResultSchema,
 } from "./shopping.js";
 export {
+  createSitemap,
+  SITEMAP_BYTE_LIMIT,
+  SITEMAP_URL_LIMIT,
+  type SitemapChangefreq,
+  type SitemapContext,
+  type SitemapEntriesInput,
+  type SitemapEntriesLoader,
+  type SitemapEntry,
+  SitemapError,
+  type SitemapHandler,
+  type SitemapIncompleteLocaleSet,
+  type SitemapIncompleteLocaleSetPolicy,
+  type SitemapOptions,
+  sitemapChangefreqSchema,
+  sitemapEntrySchema,
+  sitemapIncompleteLocaleSetPolicySchema,
+} from "./sitemap.js";
+export {
   checkThemeTemplateAssignments,
   resolveThemeTemplate,
   type ThemeTemplateAssignment,
