@@ -1242,6 +1242,8 @@ export const themeFixturesSchema = z.strictObject({
   home: homeContextSchema,
   content: z.array(contentContextSchema).default([]),
   notFound: notFoundContextSchema,
+  collectionIndex: z.array(collectionIndexContextSchema).default([]),
+  collectionEntry: z.array(collectionEntryContextSchema).default([]),
   tourIndex: tourIndexContextSchema.optional(),
   tourDetail: z.array(tourDetailContextSchema).default([]),
   categoryDetail: z.array(categoryDetailContextSchema).default([]),

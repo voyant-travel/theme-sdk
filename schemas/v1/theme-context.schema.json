@@ -25,6 +25,12 @@
     "notFound": {
       "$ref": "../v1alpha4/theme-context.schema.json#/$defs/notFound"
     },
+    "collectionIndex": {
+      "$ref": "../v1alpha4/theme-context.schema.json#/$defs/collectionIndex"
+    },
+    "collectionEntry": {
+      "$ref": "../v1alpha4/theme-context.schema.json#/$defs/collectionEntry"
+    },
     "tourIndex": {
       "$ref": "../v1alpha4/theme-context.schema.json#/$defs/tourIndex"
     },

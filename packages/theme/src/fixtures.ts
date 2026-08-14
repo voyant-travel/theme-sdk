@@ -16,6 +16,8 @@ export function createFixtureRouter(
   const contentByPath = new Map(
     [
       ...theme.fixtures.content,
+      ...theme.fixtures.collectionIndex,
+      ...theme.fixtures.collectionEntry,
       ...theme.fixtures.tourDetail,
       ...theme.fixtures.categoryDetail,
       ...theme.fixtures.cruiseDetail,

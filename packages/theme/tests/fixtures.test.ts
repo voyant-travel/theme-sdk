@@ -17,6 +17,86 @@ describe("createFixtureRouter", () => {
     });
   });
 
+  it("resolves collection index and entry fixtures at operator addresses", () => {
+    const theme = validTheme();
+    const base = {
+      locale: "ro-RO",
+      site: { name: "Test" },
+      navigation: [],
+      menus: {},
+      settings: {},
+    };
+    const collection = {
+      id: "stiri",
+      name: "Stiri",
+      fields: [{ id: "author", label: "Autor", type: "text" as const }],
+    };
+    const entry = {
+      id: "prima",
+      slug: "prima",
+      path: "/stiri/prima",
+      title: "Prima",
+      values: { author: "Ana" },
+    };
+    theme.manifest.routes.push(
+      { id: "collection", pattern: "/stiri", context: "collectionIndex" },
+      {
+        id: "collection-entry",
+        pattern: "/stiri/[entry]",
+        context: "collectionEntry",
+      },
+    );
+    theme.fixtures.collectionIndex = [
+      {
+        ...base,
+        kind: "collectionIndex",
+        path: "/stiri",
+        seo: { title: "Stiri" },
+        title: "Stiri",
+        collection,
+        entries: [entry],
+      },
+    ];
+    theme.fixtures.collectionEntry = [
+      {
+        ...base,
+        kind: "collectionEntry",
+        path: "/stiri/prima",
+        seo: { title: "Prima" },
+        title: "Prima",
+        collection,
+        entry,
+      },
+    ];
+
+    const checked = checkThemeDefinition(theme);
+    if (!checked.theme) throw new Error("Test setup failed.");
+    const router = createFixtureRouter(checked.theme);
+
+    // A collection lives wherever the operator put it, so both the index and
+    // its entries are path-addressed rather than hung off a canonical prefix.
+    expect(router.resolve("/stiri").kind).toBe("collectionIndex");
+    expect(router.resolve("/stiri/prima/")).toMatchObject({
+      kind: "collectionEntry",
+      title: "Prima",
+    });
+  });
+
+  it("keeps a theme without collection fixtures valid and falling through", () => {
+    const checked = checkThemeDefinition(validTheme());
+    if (!checked.theme) throw new Error("Test setup failed.");
+
+    // Both slots default to empty, so themes written before they existed stay
+    // valid and an unclaimed collection path still reaches notFound.
+    expect(checked.ok).toBe(true);
+    expect(checked.theme.fixtures.collectionIndex).toEqual([]);
+    expect(checked.theme.fixtures.collectionEntry).toEqual([]);
+    expect(createFixtureRouter(checked.theme).resolve("/stiri")).toMatchObject({
+      kind: "notFound",
+      path: "/stiri",
+    });
+  });
+
   it("resolves canonical tour index and detail fixtures", () => {
     const theme = validTheme();
     const base = {
