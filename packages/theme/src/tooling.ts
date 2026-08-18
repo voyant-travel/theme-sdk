@@ -5,6 +5,10 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { createJiti } from "jiti";
 import type { ParsedThemeDefinition } from "./contract.js";
+import {
+  parseThemeDevelopmentRuntimeDescriptor,
+  type ThemeDevelopmentRuntimeDescriptor,
+} from "./development-runtime.js";
 import { type ThemeDiagnostic, TOOLING_SCHEMA_VERSION } from "./diagnostics.js";
 import { checkThemeDefinition } from "./validate.js";
 
@@ -208,6 +212,8 @@ export interface CommandInvocation {
   cwd: string;
   signal?: AbortSignal;
   output?: "inherit" | "silent";
+  /** Private inherited values. They are never added to command arguments. */
+  env?: NodeJS.ProcessEnv;
 }
 
 export type ThemeCommandRunner = (
@@ -226,6 +232,42 @@ export interface BuildThemeOptions extends RunnableThemeOptions {
 export interface DevelopThemeOptions extends RunnableThemeOptions {
   host?: string;
   port?: number;
+  /** Omit for the existing fixture-backed local development behavior. */
+  runtime?: ThemeDevelopmentRuntimeReference;
+}
+
+export const THEME_DEVELOPMENT_RUNTIME_ENV =
+  "VOYANT_THEME_DEVELOPMENT_RUNTIME" as const;
+export const THEME_DEVELOPMENT_RUNTIME_ADAPTER_ENV =
+  "VOYANT_THEME_DEVELOPMENT_RUNTIME_ADAPTER" as const;
+
+export interface ThemeDevelopmentRuntimeAdapterContext {
+  descriptor: ThemeDevelopmentRuntimeDescriptor;
+  projectRoot: string;
+  signal?: AbortSignal;
+}
+
+export interface PreparedThemeDevelopmentRuntime {
+  /**
+   * Private values inherited only by the local child process. An Adapter may
+   * close over an opaque, short-lived capability and return it here; tooling
+   * never serializes these values into the descriptor or build metadata.
+   */
+  childEnvironment?: Readonly<Record<string, string>>;
+  dispose?(): void | Promise<void>;
+}
+
+export interface ThemeDevelopmentRuntimeAdapter {
+  /** Stable, non-secret Adapter identifier used by the Astro runtime. */
+  id: string;
+  prepare(
+    context: ThemeDevelopmentRuntimeAdapterContext,
+  ): PreparedThemeDevelopmentRuntime | Promise<PreparedThemeDevelopmentRuntime>;
+}
+
+export interface ThemeDevelopmentRuntimeReference {
+  descriptor: ThemeDevelopmentRuntimeDescriptor;
+  adapter: ThemeDevelopmentRuntimeAdapter;
 }
 
 export interface ThemeDevHandle {
@@ -350,12 +392,14 @@ const defaultRunner: ThemeCommandRunner = ({
   cwd,
   signal,
   output,
+  env,
 }) =>
   spawn(command, args, {
     cwd,
     signal,
     stdio: output === "silent" ? ["inherit", "ignore", "inherit"] : "inherit",
     shell: false,
+    env: env ? { ...process.env, ...env } : undefined,
   });
 
 function invocation(
@@ -363,10 +407,45 @@ function invocation(
   cwd: string,
   signal?: AbortSignal,
   output?: "inherit" | "silent",
+  env?: NodeJS.ProcessEnv,
 ): CommandInvocation {
   const [executable, ...args] = command;
   if (!executable) throw new Error("Theme tooling command cannot be empty.");
-  return { command: executable, args, cwd, signal, output };
+  return { command: executable, args, cwd, signal, output, env };
+}
+
+function validateAdapterId(value: string): string {
+  if (!/^[a-z][a-z0-9.-]{0,63}$/.test(value)) {
+    throw new Error(
+      "Theme development runtime Adapter id must be a lowercase identifier.",
+    );
+  }
+  return value;
+}
+
+function privateChildEnvironment(
+  values: Readonly<Record<string, string>> | undefined,
+): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(values ?? {})) {
+    if (!/^[A-Z_][A-Z0-9_]*$/.test(key)) {
+      throw new Error(
+        `Theme development private environment key '${key}' is invalid.`,
+      );
+    }
+    if (
+      key === THEME_DEVELOPMENT_RUNTIME_ENV ||
+      key === THEME_DEVELOPMENT_RUNTIME_ADAPTER_ENV ||
+      key.startsWith("PUBLIC_") ||
+      key.startsWith("VITE_")
+    ) {
+      throw new Error(
+        `Theme development private environment key '${key}' is reserved or public.`,
+      );
+    }
+    environment[key] = value;
+  }
+  return environment;
 }
 
 async function localAstroCommand(
@@ -667,23 +746,58 @@ export async function developTheme(
     project.theme.tooling?.dev ??
     (await localAstroCommand(options.projectRoot, "dev"));
   const command = [...base, "--host", host, "--port", String(port)];
-  const child = (options.runner ?? defaultRunner)(
-    invocation(command, path.resolve(options.projectRoot), options.signal),
-  );
+  const projectRoot = path.resolve(options.projectRoot);
+  let prepared: PreparedThemeDevelopmentRuntime | undefined;
+  let environment: NodeJS.ProcessEnv | undefined;
+  if (options.runtime) {
+    const descriptor = parseThemeDevelopmentRuntimeDescriptor(
+      options.runtime.descriptor,
+    );
+    const adapterId = validateAdapterId(options.runtime.adapter.id);
+    prepared = await options.runtime.adapter.prepare({
+      descriptor,
+      projectRoot,
+      signal: options.signal,
+    });
+    try {
+      environment = {
+        ...privateChildEnvironment(prepared.childEnvironment),
+        [THEME_DEVELOPMENT_RUNTIME_ENV]: JSON.stringify(descriptor),
+        [THEME_DEVELOPMENT_RUNTIME_ADAPTER_ENV]: adapterId,
+      };
+    } catch (error) {
+      await prepared.dispose?.();
+      throw error;
+    }
+  }
+
+  let child: ChildProcess;
+  try {
+    child = (options.runner ?? defaultRunner)(
+      invocation(command, projectRoot, options.signal, undefined, environment),
+    );
+  } catch (error) {
+    await prepared?.dispose?.();
+    throw error;
+  }
   const completed = observeDevCompletion(child);
+  const finalized = completed.then(async (exitCode) => {
+    await prepared?.dispose?.();
+    return exitCode;
+  });
   let closing: Promise<void> | undefined;
 
   return {
     url: `http://${host}:${port}`,
     wait() {
-      return completed;
+      return finalized;
     },
     close() {
       if (closing) return closing;
       closing = (async () => {
         if (child.exitCode === null && child.signalCode === null)
           child.kill("SIGTERM");
-        await completed;
+        await finalized;
       })();
       return closing;
     },
