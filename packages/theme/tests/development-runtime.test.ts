@@ -13,7 +13,7 @@ function descriptor(): ThemeDevelopmentRuntimeDescriptor {
     themeId: "theme_123",
     siteId: "site_123",
     installationId: "installation_123",
-    manifestDigest: "a".repeat(64),
+    manifestDigest: `sha256:${"a".repeat(64)}`,
     perspective: "development",
     contentEndpoint: "https://content.sandbox.onvoyant.com/v1",
     publicApiEndpoint: "https://api.sandbox.onvoyant.com/v1",

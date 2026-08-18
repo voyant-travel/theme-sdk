@@ -108,7 +108,7 @@ function developmentEnvironment(
       themeId: "theme_123",
       siteId: "site_123",
       installationId: "installation_123",
-      manifestDigest: "a".repeat(64),
+      manifestDigest: `sha256:${"a".repeat(64)}`,
       perspective: "development",
       contentEndpoint: "https://sandbox.onvoyant.com/theme-development/content",
       publicApiEndpoint:
@@ -178,7 +178,7 @@ describe("createThemeContextResolver", () => {
       path: "/stories/north",
       perspective: "development",
       sessionId: "session_123",
-      manifestDigest: "a".repeat(64),
+      manifestDigest: `sha256:${"a".repeat(64)}`,
     });
   });
 

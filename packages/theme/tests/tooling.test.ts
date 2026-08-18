@@ -143,7 +143,7 @@ describe("developTheme", () => {
       themeId: "voyant.minimal",
       siteId: "site_123",
       installationId: "installation_123",
-      manifestDigest: "b".repeat(64),
+      manifestDigest: `sha256:${"b".repeat(64)}`,
       perspective: "development",
       contentEndpoint: "https://content.sandbox.onvoyant.com/v1",
       publicApiEndpoint: "https://api.sandbox.onvoyant.com/v1",

@@ -57,7 +57,10 @@ export const themeDevelopmentRuntimeDescriptorSchema = z.strictObject({
   installationId: opaqueIdSchema,
   manifestDigest: z
     .string()
-    .regex(/^[a-f0-9]{64}$/, "Must be a lowercase SHA-256 digest."),
+    .regex(
+      /^sha256:[a-f0-9]{64}$/,
+      "Must be a lowercase SHA-256 digest with the sha256: prefix.",
+    ),
   perspective: z.enum(["published", "development"]),
   contentEndpoint: remoteEndpointSchema,
   publicApiEndpoint: remoteEndpointSchema,
