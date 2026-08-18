@@ -3,8 +3,10 @@ import {
   checkThemeDefinition,
   createFixtureRouter,
   type ParsedThemeDefinition,
+  parseThemeDevelopmentRuntimeDescriptor,
   READABLE_CONTRACT_VERSIONS,
   type ThemeDefinition,
+  type ThemeDevelopmentRuntimeDescriptor,
   type ThemePageContext,
   themeContextResponseSchema,
   upgradeThemeContextResponse,
@@ -31,7 +33,16 @@ export const PUBLICATION_RESPONSE_HEADERS = {
   requestedPath: "x-voyant-requested-path",
 } as const;
 
+export const THEME_DEVELOPMENT_RUNTIME_ADAPTER_ID = "voyant-platform" as const;
+
+export const THEME_DEVELOPMENT_RUNTIME_ENV_NAMES = [
+  "VOYANT_THEME_DEVELOPMENT_RUNTIME",
+  "VOYANT_THEME_DEVELOPMENT_RUNTIME_ADAPTER",
+  "VOYANT_THEME_DEVELOPMENT_CAPABILITY",
+] as const;
+
 const MAX_CONTEXT_RESPONSE_BYTES = 2 * 1024 * 1024;
+export const CONNECTED_CONTEXT_TIMEOUT_MS = 10_000;
 
 /** The HTTP subset of a Cloudflare `Fetcher` used by the theme runtime. */
 export interface PublicationFetcher {
@@ -47,9 +58,15 @@ export interface VoyantPublicationBindings {
   VOYANT_THEME_RELEASE_ID: string;
 }
 
+export interface VoyantThemeDevelopmentRuntime {
+  descriptor: ThemeDevelopmentRuntimeDescriptor;
+  capability: string;
+}
+
 export type ThemeContextResolver = (
   input: string | URL,
   runtimeEnv?: unknown,
+  privateEnvironment?: unknown,
 ) => Promise<ThemePageContext>;
 
 export type ThemeRuntimeErrorCode =
@@ -78,6 +95,85 @@ function isPublicationFetcher(value: unknown): value is PublicationFetcher {
     "fetch" in value &&
     typeof value.fetch === "function"
   );
+}
+
+/**
+ * Reads the private child-process handoff produced by connected Theme tooling.
+ * The capability is deliberately separate from the serializable descriptor.
+ */
+export function readThemeDevelopmentRuntime(
+  privateEnvironment: unknown,
+): VoyantThemeDevelopmentRuntime | undefined {
+  if (!isRecord(privateEnvironment)) return undefined;
+  const configured = THEME_DEVELOPMENT_RUNTIME_ENV_NAMES.filter(
+    (name) => privateEnvironment[name] !== undefined,
+  );
+  if (configured.length === 0) return undefined;
+  if (configured.length !== THEME_DEVELOPMENT_RUNTIME_ENV_NAMES.length) {
+    const missing = THEME_DEVELOPMENT_RUNTIME_ENV_NAMES.filter(
+      (name) => privateEnvironment[name] === undefined,
+    );
+    throw new ThemeRuntimeError(
+      "THEME_RUNTIME_BINDINGS_INVALID",
+      `Voyant connected development runtime is missing private values: ${missing.join(", ")}.`,
+    );
+  }
+
+  if (
+    privateEnvironment.VOYANT_THEME_DEVELOPMENT_RUNTIME_ADAPTER !==
+    THEME_DEVELOPMENT_RUNTIME_ADAPTER_ID
+  ) {
+    throw new ThemeRuntimeError(
+      "THEME_RUNTIME_BINDINGS_INVALID",
+      `Voyant connected development requires Adapter '${THEME_DEVELOPMENT_RUNTIME_ADAPTER_ID}'.`,
+    );
+  }
+  const capability = privateEnvironment.VOYANT_THEME_DEVELOPMENT_CAPABILITY;
+  if (
+    typeof capability !== "string" ||
+    !capability ||
+    capability !== capability.trim()
+  ) {
+    throw new ThemeRuntimeError(
+      "THEME_RUNTIME_BINDINGS_INVALID",
+      "Voyant connected development capability must be a non-empty string without outer whitespace.",
+    );
+  }
+
+  const serialized = privateEnvironment.VOYANT_THEME_DEVELOPMENT_RUNTIME;
+  if (typeof serialized !== "string" || !serialized.trim()) {
+    throw new ThemeRuntimeError(
+      "THEME_RUNTIME_BINDINGS_INVALID",
+      "Voyant connected development descriptor must be serialized JSON.",
+    );
+  }
+  let untrustedDescriptor: unknown;
+  try {
+    untrustedDescriptor = JSON.parse(serialized);
+  } catch {
+    throw new ThemeRuntimeError(
+      "THEME_RUNTIME_BINDINGS_INVALID",
+      "Voyant connected development descriptor is not valid JSON.",
+    );
+  }
+
+  let descriptor: ThemeDevelopmentRuntimeDescriptor;
+  try {
+    descriptor = parseThemeDevelopmentRuntimeDescriptor(untrustedDescriptor);
+  } catch {
+    throw new ThemeRuntimeError(
+      "THEME_RUNTIME_BINDINGS_INVALID",
+      "Voyant connected development descriptor is invalid.",
+    );
+  }
+  if (Date.parse(descriptor.expiresAt) <= Date.now()) {
+    throw new ThemeRuntimeError(
+      "THEME_RUNTIME_BINDINGS_INVALID",
+      "Voyant connected development session has expired.",
+    );
+  }
+
+  return { descriptor, capability };
 }
 
 function requiredString(
@@ -288,6 +384,13 @@ async function resolvePublishedContext(
       "Voyant publication context could not be loaded.",
     );
   }
+  return validateThemeContextResponse(response, request.url);
+}
+
+async function validateThemeContextResponse(
+  response: Response,
+  requestUrl: string,
+): Promise<ThemePageContext> {
   if (!response.ok && response.status !== 404) {
     throw new ThemeRuntimeError(
       "THEME_CONTEXT_FETCH_FAILED",
@@ -326,7 +429,7 @@ async function resolvePublishedContext(
     );
   }
   const requestedPath = publicationContextPath(
-    new URL(request.url).pathname,
+    new URL(requestUrl).pathname,
     parsed.data.context.locale,
   );
   if (response.status === 404) {
@@ -351,6 +454,78 @@ async function resolvePublishedContext(
     );
   }
   return parsed.data.context;
+}
+
+function connectedDevelopmentRequest(
+  input: string | URL,
+  runtime: VoyantThemeDevelopmentRuntime,
+  signal: AbortSignal,
+): Request {
+  let pageUrl: URL;
+  try {
+    pageUrl = new URL(String(input));
+  } catch {
+    throw new ThemeRuntimeError(
+      "THEME_CONTEXT_FETCH_FAILED",
+      "Connected theme context resolution requires an absolute request URL.",
+    );
+  }
+  if (pageUrl.protocol !== "http:" && pageUrl.protocol !== "https:") {
+    throw new ThemeRuntimeError(
+      "THEME_CONTEXT_FETCH_FAILED",
+      "Connected theme context resolution requires an HTTP(S) request URL.",
+    );
+  }
+  pageUrl.hash = "";
+
+  // Field order is part of the relay's signed, canonical request contract.
+  const payload = {
+    path: pageUrl.pathname,
+    perspective: runtime.descriptor.perspective,
+    sessionId: runtime.descriptor.sessionId,
+    manifestDigest: runtime.descriptor.manifestDigest,
+  };
+  return new Request(runtime.descriptor.contentEndpoint, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      authorization: `Bearer ${runtime.capability}`,
+      "content-type": "application/json",
+      [PUBLICATION_REQUEST_HEADERS.contractVersion]: CONTRACT_VERSION,
+    },
+    body: JSON.stringify(payload),
+    signal,
+  });
+}
+
+async function resolveConnectedDevelopmentContext(
+  input: string | URL,
+  runtime: VoyantThemeDevelopmentRuntime,
+): Promise<ThemePageContext> {
+  const controller = new AbortController();
+  const request = connectedDevelopmentRequest(
+    input,
+    runtime,
+    controller.signal,
+  );
+  const timeout = setTimeout(
+    () => controller.abort(),
+    CONNECTED_CONTEXT_TIMEOUT_MS,
+  );
+  try {
+    let response: Response;
+    try {
+      response = await fetch(request);
+    } catch {
+      throw new ThemeRuntimeError(
+        "THEME_CONTEXT_FETCH_FAILED",
+        "Voyant connected development context could not be loaded.",
+      );
+    }
+    return await validateThemeContextResponse(response, String(input));
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /**
@@ -392,9 +567,18 @@ export function createThemeContextResolver(
   }
   const router = createFixtureRouter(checked.theme);
   const memo = new Map<string, ThemePageContext>();
-  return async (input, runtimeEnv) => {
+  return async (input, runtimeEnv, privateEnvironment) => {
     const bindings = readPublicationBindings(runtimeEnv);
-    if (!bindings) return router.resolve(input);
+    if (!bindings) {
+      const developmentRuntime =
+        readThemeDevelopmentRuntime(privateEnvironment);
+      if (developmentRuntime) {
+        // Development sessions are mutable. Never reuse a context across SSR
+        // requests, even when the URL and manifest digest have not changed.
+        return resolveConnectedDevelopmentContext(input, developmentRuntime);
+      }
+      return router.resolve(input);
+    }
 
     const key = memoKey(bindings, input);
     const memoized = memo.get(key);

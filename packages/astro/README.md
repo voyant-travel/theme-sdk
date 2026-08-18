@@ -17,6 +17,14 @@ When no Voyant publication bindings exist, the resolver uses fixtures. When the
 dispatcher injects any production binding, all five are required and errors
 fail closed. Theme code always receives the validated `v1alpha2` context.
 
+The same call supports connected local development when the Voyant CLI starts
+Astro with a validated development descriptor, the exact `voyant-platform`
+Adapter, and a private `VOYANT_THEME_DEVELOPMENT_CAPABILITY`. The runtime sends
+a fresh server-side request to the descriptor's Content endpoint for every
+resolution. Partial, expired, or malformed connected configuration fails
+closed; it never falls back to fixtures. Capabilities must not be placed in
+`PUBLIC_*`, `VITE_*`, URLs, project files, or query parameters.
+
 Add `/// <reference types="@voyant-travel/astro/virtual" />` to `src/env.d.ts`
 for editor and type-checker support. The types subpath is owned and published by
 this package.

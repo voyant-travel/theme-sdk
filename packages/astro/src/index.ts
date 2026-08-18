@@ -82,7 +82,8 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
                     `export const theme = ${serialized};`,
                     "export const manifest = theme.manifest;",
                     "const resolveContext = createThemeContextResolver(theme);",
-                    "export const resolveThemeContext = (input) => resolveContext(input, env);",
+                    'const privateEnvironment = import.meta.env.SSR && typeof process !== "undefined" ? process.env : undefined;',
+                    "export const resolveThemeContext = (input) => resolveContext(input, env, privateEnvironment);",
                     "export const resolvePublicationSystemRoute = (request) => resolveSystemRoute(request, env);",
                   ].join("\n");
                 },
@@ -113,15 +114,20 @@ export {
 } from "./editor-bridge.js";
 
 export {
+  CONNECTED_CONTEXT_TIMEOUT_MS,
   createThemeContextResolver,
   PUBLICATION_BINDING_NAMES,
   PUBLICATION_REQUEST_HEADERS,
   PUBLICATION_RESPONSE_HEADERS,
   type PublicationFetcher,
   readPublicationBindings,
+  readThemeDevelopmentRuntime,
   resolvePublicationSystemRoute,
+  THEME_DEVELOPMENT_RUNTIME_ADAPTER_ID,
+  THEME_DEVELOPMENT_RUNTIME_ENV_NAMES,
   type ThemeContextResolver,
   ThemeRuntimeError,
   type ThemeRuntimeErrorCode,
   type VoyantPublicationBindings,
+  type VoyantThemeDevelopmentRuntime,
 } from "./runtime.js";
