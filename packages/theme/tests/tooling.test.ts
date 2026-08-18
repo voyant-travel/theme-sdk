@@ -298,6 +298,7 @@ describe("developTheme", () => {
   });
 
   it("rejects public environment names for short-lived capabilities", async () => {
+    let disposed = false;
     await expect(
       developTheme({
         projectRoot: await projectWithConfig(),
@@ -307,11 +308,15 @@ describe("developTheme", () => {
             id: "voyant-connected",
             prepare: () => ({
               childEnvironment: { VITE_CAPABILITY: "would-be-public" },
+              dispose() {
+                disposed = true;
+              },
             }),
           },
         },
         runner: () => childProcessDouble(),
       }),
     ).rejects.toThrow("reserved or public");
+    expect(disposed).toBe(true);
   });
 });
