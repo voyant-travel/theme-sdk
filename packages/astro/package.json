@@ -1,6 +1,6 @@
 {
   "name": "@voyant-travel/astro",
-  "version": "1.0.2",
+  "version": "1.7.0",
   "description": "Astro and Cloudflare runtime integration for Voyant themes.",
   "license": "Apache-2.0",
   "repository": {
