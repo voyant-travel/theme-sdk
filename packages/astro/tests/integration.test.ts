@@ -68,6 +68,9 @@ describe("voyantTheme middleware ordering", () => {
     expect(source).toContain("import.meta.env.SSR");
     expect(source).toContain("process.env");
     expect(source).toContain("resolveContext(input, env, privateEnvironment)");
+    expect(source).toContain(
+      "resolvePublicApiRoute(request, privateEnvironment)",
+    );
     expect(source).not.toContain("VOYANT_THEME_DEVELOPMENT_CAPABILITY");
     expect(source).not.toContain("PUBLIC_");
     expect(source).not.toContain("VITE_");

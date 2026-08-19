@@ -43,6 +43,7 @@ export const THEME_DEVELOPMENT_RUNTIME_ENV_NAMES = [
 
 const MAX_CONTEXT_RESPONSE_BYTES = 2 * 1024 * 1024;
 export const CONNECTED_CONTEXT_TIMEOUT_MS = 10_000;
+export const CONNECTED_PUBLIC_API_PATH = "/v1/public" as const;
 
 /** The HTTP subset of a Cloudflare `Fetcher` used by the theme runtime. */
 export interface PublicationFetcher {
@@ -61,6 +62,73 @@ export interface VoyantPublicationBindings {
 export interface VoyantThemeDevelopmentRuntime {
   descriptor: ThemeDevelopmentRuntimeDescriptor;
   capability: string;
+}
+
+const CONNECTED_PUBLIC_API_REQUEST_HEADERS = [
+  "accept",
+  "accept-language",
+  "content-type",
+  "idempotency-key",
+] as const;
+
+function isCanonicalPublicApiPath(pathname: string) {
+  return (
+    pathname === CONNECTED_PUBLIC_API_PATH ||
+    pathname.startsWith(`${CONNECTED_PUBLIC_API_PATH}/`)
+  );
+}
+
+/**
+ * Serves canonical same-origin Public API calls during connected development.
+ * The browser sees only localhost; the private development capability stays in
+ * Astro's server process and is exchanged with the Platform relay.
+ */
+export async function resolveThemePublicApiRoute(
+  request: Request,
+  privateEnvironment?: unknown,
+  fetchImpl: typeof fetch = globalThis.fetch,
+): Promise<Response | undefined> {
+  const requestUrl = new URL(request.url);
+  if (!isCanonicalPublicApiPath(requestUrl.pathname)) return undefined;
+  const development = readThemeDevelopmentRuntime(privateEnvironment);
+  if (!development) return undefined;
+
+  const target = new URL(development.descriptor.publicApiEndpoint);
+  target.pathname = `${target.pathname.replace(/\/$/, "")}${requestUrl.pathname}`;
+  target.search = requestUrl.search;
+  const headers = new Headers();
+  for (const name of CONNECTED_PUBLIC_API_REQUEST_HEADERS) {
+    const value = request.headers.get(name);
+    if (value !== null) headers.set(name, value);
+  }
+  headers.set("authorization", `Bearer ${development.capability}`);
+
+  const init: RequestInit & { duplex?: "half" } = {
+    method: request.method,
+    headers,
+    redirect: "manual",
+    signal: request.signal,
+  };
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    init.body = request.body;
+    init.duplex = "half";
+  }
+  try {
+    const response = await fetchImpl(new Request(target, init));
+    const responseHeaders = new Headers(response.headers);
+    responseHeaders.set("cache-control", "private, no-store");
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+    });
+  } catch {
+    throw new ThemeRuntimeError(
+      "THEME_CONTEXT_FETCH_FAILED",
+      "Connected Theme Public API relay is unavailable.",
+      502,
+    );
+  }
 }
 
 export type ThemeContextResolver = (

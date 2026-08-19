@@ -7,6 +7,7 @@ import {
   PUBLICATION_RESPONSE_HEADERS,
   readThemeDevelopmentRuntime,
   resolvePublicationSystemRoute,
+  resolveThemePublicApiRoute,
   THEME_DEVELOPMENT_RUNTIME_ADAPTER_ID,
   THEME_DEVELOPMENT_RUNTIME_ENV_NAMES,
   ThemeRuntimeError,
@@ -622,6 +623,60 @@ describe("createThemeContextResolver", () => {
       resolve("https://north.example/stories/north", env),
     ).resolves.toMatchObject({ kind: "content" });
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("resolveThemePublicApiRoute", () => {
+  it("relays a canonical browser call without exposing browser credentials", async () => {
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const request = input instanceof Request ? input : new Request(input);
+      expect(request.url).toBe(
+        "https://sandbox.onvoyant.com/theme-development/public-api/v1/public/catalog/search?market=ro",
+      );
+      expect(request.headers.get("authorization")).toBe(
+        "Bearer private-capability",
+      );
+      expect(request.headers.get("cookie")).toBeNull();
+      expect(request.headers.get("x-api-key")).toBeNull();
+      await expect(request.json()).resolves.toEqual({ query: "Danube" });
+      return Response.json({ data: [] });
+    });
+    const response = await resolveThemePublicApiRoute(
+      new Request("http://localhost:4321/v1/public/catalog/search?market=ro", {
+        method: "POST",
+        headers: {
+          cookie: "browser=session",
+          "content-type": "application/json",
+          "x-api-key": "must-not-cross",
+        },
+        body: JSON.stringify({ query: "Danube" }),
+      }),
+      developmentEnvironment(),
+      fetch,
+    );
+
+    expect(response?.status).toBe(200);
+    expect(response?.headers.get("cache-control")).toBe("private, no-store");
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("leaves non-Public-API and non-connected requests to Astro", async () => {
+    const fetch = vi.fn();
+    await expect(
+      resolveThemePublicApiRoute(
+        new Request("http://localhost:4321/tours"),
+        developmentEnvironment(),
+        fetch,
+      ),
+    ).resolves.toBeUndefined();
+    await expect(
+      resolveThemePublicApiRoute(
+        new Request("http://localhost:4321/v1/public/settings"),
+        undefined,
+        fetch,
+      ),
+    ).resolves.toBeUndefined();
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 

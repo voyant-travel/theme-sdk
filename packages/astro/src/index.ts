@@ -22,6 +22,7 @@ export interface VirtualVoyantThemeModule {
   resolveThemeContext(
     input: string | URL,
   ): Promise<import("@voyant-travel/theme").ThemePageContext>;
+  resolveThemePublicApiRoute(request: Request): Promise<Response | undefined>;
 }
 
 /**
@@ -76,7 +77,7 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
                 load(id) {
                   if (id !== RESOLVED_VIRTUAL_ID) return undefined;
                   return [
-                    'import { createThemeContextResolver } from "@voyant-travel/astro/runtime";',
+                    'import { createThemeContextResolver, resolveThemePublicApiRoute as resolvePublicApiRoute } from "@voyant-travel/astro/runtime";',
                     'import { resolvePublicationSystemRoute as resolveSystemRoute } from "@voyant-travel/astro/runtime";',
                     'import { env } from "cloudflare:workers";',
                     `export const theme = ${serialized};`,
@@ -84,6 +85,7 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
                     "const resolveContext = createThemeContextResolver(theme);",
                     'const privateEnvironment = import.meta.env.SSR && typeof process !== "undefined" ? process.env : undefined;',
                     "export const resolveThemeContext = (input) => resolveContext(input, env, privateEnvironment);",
+                    "export const resolveThemePublicApiRoute = (request) => resolvePublicApiRoute(request, privateEnvironment);",
                     "export const resolvePublicationSystemRoute = (request) => resolveSystemRoute(request, env);",
                   ].join("\n");
                 },
@@ -115,6 +117,7 @@ export {
 
 export {
   CONNECTED_CONTEXT_TIMEOUT_MS,
+  CONNECTED_PUBLIC_API_PATH,
   createThemeContextResolver,
   PUBLICATION_BINDING_NAMES,
   PUBLICATION_REQUEST_HEADERS,
@@ -123,6 +126,7 @@ export {
   readPublicationBindings,
   readThemeDevelopmentRuntime,
   resolvePublicationSystemRoute,
+  resolveThemePublicApiRoute,
   THEME_DEVELOPMENT_RUNTIME_ADAPTER_ID,
   THEME_DEVELOPMENT_RUNTIME_ENV_NAMES,
   type ThemeContextResolver,
