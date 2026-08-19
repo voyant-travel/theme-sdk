@@ -17,6 +17,7 @@ import {
   THEME_DEVELOPMENT_RUNTIME_ADAPTER_ENV,
   THEME_DEVELOPMENT_RUNTIME_ENV,
   validateTheme,
+  watchThemeProject,
 } from "../src/tooling.js";
 import { validTheme } from "./helpers.js";
 
@@ -45,6 +46,38 @@ describe("validateTheme", () => {
         path: "$",
       }),
     ]);
+  });
+
+  it("watches directly imported local manifest modules and returns diagnostics", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "voyant-theme-"));
+    const manifestPath = path.join(root, "manifest.mjs");
+    await writeFile(
+      path.join(root, "theme.config.mjs"),
+      'import theme from "./manifest.mjs"; export default theme;\n',
+    );
+    await writeFile(
+      manifestPath,
+      `export default ${JSON.stringify(validTheme())};`,
+    );
+    let resolveReport!: (
+      report: Awaited<ReturnType<typeof validateTheme>>,
+    ) => void;
+    const report = new Promise<Awaited<ReturnType<typeof validateTheme>>>(
+      (resolve) => {
+        resolveReport = resolve;
+      },
+    );
+    const watcher = await watchThemeProject(
+      { projectRoot: root, debounceMs: 5 },
+      (candidate) => {
+        if (!candidate.ok) resolveReport(candidate);
+      },
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    await writeFile(manifestPath, "export default {};\n");
+    await expect(report).resolves.toMatchObject({ ok: false });
+    await watcher.close();
   });
 });
 
@@ -242,6 +275,76 @@ describe("developTheme", () => {
     child.emitExit(0);
     await expect(handle.wait()).resolves.toBe(0);
     expect(disposed).toBe(true);
+  });
+
+  it("restarts Astro with a replacement runtime without settling the development handle", async () => {
+    const children = [childProcessDouble(), childProcessDouble()];
+    const invocations: Array<{ env?: NodeJS.ProcessEnv }> = [];
+    const first = connectedDescriptor();
+    const second = {
+      ...first,
+      manifestDigest: `sha256:${"c".repeat(64)}` as const,
+    };
+    const handle = await developTheme({
+      projectRoot: await projectWithConfig(),
+      runtime: {
+        descriptor: first,
+        adapter: { id: "voyant-connected", prepare: () => ({}) },
+      },
+      runner: (invocation) => {
+        invocations.push(invocation);
+        const child = children.shift();
+        if (!child) throw new Error("Unexpected spawn.");
+        return child;
+      },
+    });
+    let completed = false;
+    void handle.wait().then(() => {
+      completed = true;
+    });
+
+    await handle.reload({
+      descriptor: second,
+      adapter: { id: "voyant-connected", prepare: () => ({}) },
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(completed).toBe(false);
+    expect(invocations).toHaveLength(2);
+    expect(
+      JSON.parse(
+        invocations[1]?.env?.[THEME_DEVELOPMENT_RUNTIME_ENV] ?? "null",
+      ),
+    ).toEqual(second);
+    await handle.close();
+    await expect(handle.wait()).resolves.toBe(0);
+  });
+
+  it("settles the development handle when a replacement child cannot start", async () => {
+    const firstChild = childProcessDouble();
+    let spawnCount = 0;
+    const handle = await developTheme({
+      projectRoot: await projectWithConfig(),
+      runtime: {
+        descriptor: connectedDescriptor(),
+        adapter: { id: "voyant-connected", prepare: () => ({}) },
+      },
+      runner: () => {
+        spawnCount += 1;
+        if (spawnCount === 1) return firstChild;
+        throw new Error("replacement spawn failed");
+      },
+    });
+
+    await expect(
+      handle.reload({
+        descriptor: {
+          ...connectedDescriptor(),
+          manifestDigest: `sha256:${"d".repeat(64)}`,
+        },
+        adapter: { id: "voyant-connected", prepare: () => ({}) },
+      }),
+    ).rejects.toThrow("replacement spawn failed");
+    await expect(handle.wait()).resolves.toBe(1);
   });
 
   it("keeps Adapter capabilities out of arguments and build/runtime metadata", async () => {
