@@ -4,6 +4,14 @@ The stable public theme contract for Voyant. Define a theme with
 `defineTheme`, validate objects with `checkThemeDefinition`, or load and operate
 on a project through `@voyant-travel/theme/tooling`.
 
+Connected local development uses the separately versioned, host-neutral
+`ThemeDevelopmentRuntimeDescriptor`. Platform session creation and credentials
+remain proprietary and are supplied by the Voyant CLI through a runtime
+Adapter; the public descriptor contains identifiers and endpoints, never
+capability secrets. Its editor base URL is non-secret; the proprietary CLI
+exchanges any one-time handoff code separately. Omitting a runtime preserves
+fixture-backed development.
+
 The `v1` contract stabilizes the v1alpha5 tour, cruise, ship, sailing,
 managed-shopping, opaque Trip, and Book-all surfaces with recursively
 commercial- and privacy-safe publication projections. See

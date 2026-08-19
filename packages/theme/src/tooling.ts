@@ -1,10 +1,15 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { createHash } from "node:crypto";
+import { type FSWatcher, watch } from "node:fs";
 import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { createJiti } from "jiti";
 import type { ParsedThemeDefinition } from "./contract.js";
+import {
+  parseThemeDevelopmentRuntimeDescriptor,
+  type ThemeDevelopmentRuntimeDescriptor,
+} from "./development-runtime.js";
 import { type ThemeDiagnostic, TOOLING_SCHEMA_VERSION } from "./diagnostics.js";
 import { checkThemeDefinition } from "./validate.js";
 
@@ -208,6 +213,10 @@ export interface CommandInvocation {
   cwd: string;
   signal?: AbortSignal;
   output?: "inherit" | "silent";
+  /** Private inherited values. They are never added to command arguments. */
+  env?: NodeJS.ProcessEnv;
+  /** Run a long-lived development command in an SDK-owned process group. */
+  processGroup?: boolean;
 }
 
 export type ThemeCommandRunner = (
@@ -226,11 +235,58 @@ export interface BuildThemeOptions extends RunnableThemeOptions {
 export interface DevelopThemeOptions extends RunnableThemeOptions {
   host?: string;
   port?: number;
+  /** Omit for the existing fixture-backed local development behavior. */
+  runtime?: ThemeDevelopmentRuntimeReference;
+}
+
+export interface WatchThemeProjectOptions extends ThemeProjectOptions {
+  /** Coalesce editor saves that replace a file through multiple filesystem operations. */
+  debounceMs?: number;
+}
+
+export interface ThemeProjectWatchHandle {
+  close(): Promise<void>;
+}
+
+export const THEME_DEVELOPMENT_RUNTIME_ENV =
+  "VOYANT_THEME_DEVELOPMENT_RUNTIME" as const;
+export const THEME_DEVELOPMENT_RUNTIME_ADAPTER_ENV =
+  "VOYANT_THEME_DEVELOPMENT_RUNTIME_ADAPTER" as const;
+
+export interface ThemeDevelopmentRuntimeAdapterContext {
+  descriptor: ThemeDevelopmentRuntimeDescriptor;
+  projectRoot: string;
+  signal?: AbortSignal;
+}
+
+export interface PreparedThemeDevelopmentRuntime {
+  /**
+   * Private values inherited only by the local child process. An Adapter may
+   * close over an opaque, short-lived capability and return it here; tooling
+   * never serializes these values into the descriptor or build metadata.
+   */
+  childEnvironment?: Readonly<Record<string, string>>;
+  dispose?(): void | Promise<void>;
+}
+
+export interface ThemeDevelopmentRuntimeAdapter {
+  /** Stable, non-secret Adapter identifier used by the Astro runtime. */
+  id: string;
+  prepare(
+    context: ThemeDevelopmentRuntimeAdapterContext,
+  ): PreparedThemeDevelopmentRuntime | Promise<PreparedThemeDevelopmentRuntime>;
+}
+
+export interface ThemeDevelopmentRuntimeReference {
+  descriptor: ThemeDevelopmentRuntimeDescriptor;
+  adapter: ThemeDevelopmentRuntimeAdapter;
 }
 
 export interface ThemeDevHandle {
   url: string;
   wait(): Promise<number>;
+  /** Restart Astro with a validated replacement connected-runtime descriptor. */
+  reload(runtime: ThemeDevelopmentRuntimeReference): Promise<void>;
   close(): Promise<void>;
 }
 
@@ -314,7 +370,9 @@ export async function loadThemeProject(
       interopDefault: false,
       moduleCache: false,
     });
-    input = unwrapDefault(await loader.import(configPath));
+    // Use Jiti's synchronous evaluator so native ESM's process-wide URL cache
+    // cannot return stale config or local manifest modules during watch mode.
+    input = unwrapDefault(loader(configPath));
   } catch (error) {
     return {
       configPath,
@@ -344,18 +402,181 @@ export async function validateTheme(
 /** Additive programmatic alias for SDK consumers. */
 export const checkTheme = validateTheme;
 
+const LOCAL_IMPORT_PATTERN =
+  /(?:\b(?:import|export)\s+(?:[^"']*?\s+from\s*)?|\brequire\s*\(|\bimport\s*\()\s*["'](\.{1,2}\/[^"']+)["']/g;
+const LOCAL_MODULE_EXTENSIONS = [
+  "",
+  ".ts",
+  ".mts",
+  ".cts",
+  ".tsx",
+  ".js",
+  ".mjs",
+  ".cjs",
+  ".jsx",
+  ".json",
+] as const;
+
+async function localConfigDependencies(
+  configPath: string,
+): Promise<Set<string>> {
+  const dependencies = new Set([path.resolve(configPath)]);
+  let source: string;
+  try {
+    source = await readFile(configPath, "utf8");
+  } catch {
+    return dependencies;
+  }
+  for (const match of source.matchAll(LOCAL_IMPORT_PATTERN)) {
+    const specifier = match[1];
+    if (!specifier) continue;
+    const candidate = path.resolve(path.dirname(configPath), specifier);
+    let resolved = false;
+    for (const suffix of LOCAL_MODULE_EXTENSIONS) {
+      const file = `${candidate}${suffix}`;
+      if (await fileExists(file)) {
+        dependencies.add(file);
+        resolved = true;
+        break;
+      }
+      const index = path.join(candidate, `index${suffix}`);
+      if (suffix && (await fileExists(index))) {
+        dependencies.add(index);
+        resolved = true;
+        break;
+      }
+    }
+    if (!resolved) {
+      // Retain candidate paths so recreating a temporarily invalid import also
+      // retriggers validation.
+      for (const suffix of LOCAL_MODULE_EXTENSIONS) {
+        dependencies.add(`${candidate}${suffix}`);
+        if (suffix) dependencies.add(path.join(candidate, `index${suffix}`));
+      }
+    }
+  }
+  return dependencies;
+}
+
+/**
+ * Watches the config and its directly imported local manifest modules.
+ * Invalid edits are returned as versioned diagnostics and do not mutate the
+ * caller's last valid development runtime.
+ */
+export async function watchThemeProject(
+  options: WatchThemeProjectOptions,
+  onReport: (report: ThemeToolingReport) => void | Promise<void>,
+): Promise<ThemeProjectWatchHandle> {
+  const configPath =
+    (await resolveConfigPath(options)) ??
+    path.resolve(
+      options.projectRoot,
+      options.configFile ?? CONFIG_FILES[0] ?? "theme.config.ts",
+    );
+  let dependencies = await localConfigDependencies(configPath);
+  const watchers = new Map<string, FSWatcher>();
+  let timer: NodeJS.Timeout | undefined;
+  let closed = false;
+  let running = false;
+  let pending = false;
+  const idleWaiters = new Set<() => void>();
+
+  function schedule() {
+    if (closed) return;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(
+      () => void validate().catch(() => {}),
+      options.debounceMs ?? 75,
+    );
+  }
+
+  const refreshWatchers = () => {
+    const directories = new Set(
+      [...dependencies].map((dependency) => path.dirname(dependency)),
+    );
+    for (const [directory, watcher] of watchers) {
+      if (!directories.has(directory)) {
+        watcher.close();
+        watchers.delete(directory);
+      }
+    }
+    for (const directory of directories) {
+      if (watchers.has(directory)) continue;
+      try {
+        const watcher = watch(directory, (_event, filename) => {
+          if (closed || filename === null) return;
+          const changed = path.resolve(directory, filename.toString());
+          if (dependencies.has(changed)) schedule();
+        });
+        watcher.on("error", schedule);
+        watchers.set(directory, watcher);
+      } catch {
+        // Validation reports missing modules; the config directory remains
+        // watched so repairing its import retriggers this discovery pass.
+      }
+    }
+  };
+
+  const validate = async () => {
+    if (closed) return;
+    if (running) {
+      pending = true;
+      return;
+    }
+    running = true;
+    try {
+      do {
+        pending = false;
+        const result = await validateTheme(options);
+        dependencies = await localConfigDependencies(configPath);
+        refreshWatchers();
+        await onReport(result);
+      } while (pending && !closed);
+    } finally {
+      running = false;
+      for (const resolve of idleWaiters) resolve();
+      idleWaiters.clear();
+    }
+  };
+
+  refreshWatchers();
+  try {
+    await validate();
+  } catch (error) {
+    closed = true;
+    for (const watcher of watchers.values()) watcher.close();
+    throw error;
+  }
+  return {
+    async close() {
+      if (closed) return;
+      closed = true;
+      if (timer) clearTimeout(timer);
+      for (const watcher of watchers.values()) watcher.close();
+      watchers.clear();
+      if (running) {
+        await new Promise<void>((resolve) => idleWaiters.add(resolve));
+      }
+    },
+  };
+}
+
 const defaultRunner: ThemeCommandRunner = ({
   command,
   args,
   cwd,
   signal,
   output,
+  env,
+  processGroup,
 }) =>
   spawn(command, args, {
     cwd,
     signal,
     stdio: output === "silent" ? ["inherit", "ignore", "inherit"] : "inherit",
     shell: false,
+    detached: processGroup && process.platform !== "win32",
+    env: env ? { ...process.env, ...env } : undefined,
   });
 
 function invocation(
@@ -363,10 +584,46 @@ function invocation(
   cwd: string,
   signal?: AbortSignal,
   output?: "inherit" | "silent",
+  env?: NodeJS.ProcessEnv,
+  processGroup?: boolean,
 ): CommandInvocation {
   const [executable, ...args] = command;
   if (!executable) throw new Error("Theme tooling command cannot be empty.");
-  return { command: executable, args, cwd, signal, output };
+  return { command: executable, args, cwd, signal, output, env, processGroup };
+}
+
+function validateAdapterId(value: string): string {
+  if (!/^[a-z][a-z0-9.-]{0,63}$/.test(value)) {
+    throw new Error(
+      "Theme development runtime Adapter id must be a lowercase identifier.",
+    );
+  }
+  return value;
+}
+
+function privateChildEnvironment(
+  values: Readonly<Record<string, string>> | undefined,
+): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(values ?? {})) {
+    if (!/^[A-Z_][A-Z0-9_]*$/.test(key)) {
+      throw new Error(
+        `Theme development private environment key '${key}' is invalid.`,
+      );
+    }
+    if (
+      key === THEME_DEVELOPMENT_RUNTIME_ENV ||
+      key === THEME_DEVELOPMENT_RUNTIME_ADAPTER_ENV ||
+      key.startsWith("PUBLIC_") ||
+      key.startsWith("VITE_")
+    ) {
+      throw new Error(
+        `Theme development private environment key '${key}' is reserved or public.`,
+      );
+    }
+    environment[key] = value;
+  }
+  return environment;
 }
 
 async function localAstroCommand(
@@ -393,24 +650,33 @@ async function localAstroCommand(
   ];
 }
 
-function waitForExit(child: ChildProcess): Promise<number> {
+function waitForClose(child: ChildProcess): Promise<number> {
   return new Promise((resolve, reject) => {
     child.once("error", reject);
-    child.once("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0)));
+    child.once("close", (code, signal) => resolve(code ?? (signal ? 1 : 0)));
   });
 }
 
-function observeDevCompletion(child: ChildProcess): Promise<number> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const complete = (exitCode: number) => {
-      if (settled) return;
-      settled = true;
-      resolve(exitCode);
-    };
-    child.once("error", () => complete(1));
-    child.once("exit", (code, signal) => complete(code ?? (signal ? 1 : 0)));
-  });
+function terminateDevelopmentProcess(
+  child: ChildProcess,
+  ownsProcessGroup: boolean,
+): void {
+  if (ownsProcessGroup && typeof child.pid === "number" && child.pid > 0) {
+    try {
+      process.kill(-child.pid, "SIGTERM");
+      return;
+    } catch (error) {
+      if (!isErrnoException(error, "ESRCH")) throw error;
+    }
+  }
+  child.kill("SIGTERM");
+}
+
+function isErrnoException(
+  error: unknown,
+  code: string,
+): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error && error.code === code;
 }
 
 /**
@@ -585,7 +851,7 @@ export async function buildTheme(
         options.output,
       ),
     );
-    const exitCode = await waitForExit(child);
+    const exitCode = await waitForClose(child);
     if (exitCode === 0) {
       try {
         const artifact = await createThemeBuildMetadata({
@@ -667,23 +933,153 @@ export async function developTheme(
     project.theme.tooling?.dev ??
     (await localAstroCommand(options.projectRoot, "dev"));
   const command = [...base, "--host", host, "--port", String(port)];
-  const child = (options.runner ?? defaultRunner)(
-    invocation(command, path.resolve(options.projectRoot), options.signal),
-  );
-  const completed = observeDevCompletion(child);
+  const projectRoot = path.resolve(options.projectRoot);
+  const ownsProcessGroup = !options.runner && process.platform !== "win32";
+  const prepareRuntime = async (
+    runtime: ThemeDevelopmentRuntimeReference | undefined,
+  ) => {
+    if (!runtime) return {};
+    const descriptor = parseThemeDevelopmentRuntimeDescriptor(
+      runtime.descriptor,
+    );
+    const adapterId = validateAdapterId(runtime.adapter.id);
+    const prepared = await runtime.adapter.prepare({
+      descriptor,
+      projectRoot,
+      signal: options.signal,
+    });
+    try {
+      return {
+        prepared,
+        environment: {
+          ...privateChildEnvironment(prepared.childEnvironment),
+          [THEME_DEVELOPMENT_RUNTIME_ENV]: JSON.stringify(descriptor),
+          [THEME_DEVELOPMENT_RUNTIME_ADAPTER_ENV]: adapterId,
+        },
+      };
+    } catch (error) {
+      await prepared.dispose?.();
+      throw error;
+    }
+  };
+
+  let active = await prepareRuntime(options.runtime);
+  let child: ChildProcess | undefined;
+  let childCompletion: Promise<number> | undefined;
+  let childClosed = true;
+  let closed = false;
+  let restarting = false;
+  let resolveCompleted!: (exitCode: number) => void;
+  const completed = new Promise<number>((resolve) => {
+    resolveCompleted = resolve;
+  });
+
+  const start = (environment: NodeJS.ProcessEnv | undefined) => {
+    // Astro 7 auto-backgrounds itself when it detects an agentic parent. Any
+    // truthy value suppresses that detection; Astro does not interpret the
+    // value. Keep the child in the foreground so this handle owns its lifetime.
+    const childEnvironment = {
+      ...environment,
+      ASTRO_DEV_BACKGROUND: "0",
+    };
+    const next = (options.runner ?? defaultRunner)(
+      invocation(
+        command,
+        projectRoot,
+        options.signal,
+        undefined,
+        childEnvironment,
+        true,
+      ),
+    );
+    child = next;
+    childClosed = false;
+    let observed = false;
+    let resolveChildCompletion!: (exitCode: number) => void;
+    childCompletion = new Promise<number>((resolve) => {
+      resolveChildCompletion = resolve;
+    });
+    const complete = (exitCode: number) => {
+      if (observed) return;
+      observed = true;
+      resolveChildCompletion(exitCode);
+      if (child === next) childClosed = true;
+      if (!restarting && !closed) resolveCompleted(exitCode);
+    };
+    next.once("error", () => complete(1));
+    next.once("close", (code, signal) => complete(code ?? (signal ? 1 : 0)));
+    return next;
+  };
+
+  try {
+    start(active.environment);
+  } catch (error) {
+    await active.prepared?.dispose?.();
+    throw error;
+  }
+  const finalized = completed.then(async (exitCode) => {
+    await active.prepared?.dispose?.();
+    return exitCode;
+  });
   let closing: Promise<void> | undefined;
 
   return {
     url: `http://${host}:${port}`,
     wait() {
-      return completed;
+      return finalized;
+    },
+    async reload(runtime) {
+      if (closed)
+        throw new Error("Cannot reload a closed Theme development server.");
+      if (!child || childClosed) {
+        throw new Error("Cannot reload a stopped Theme development server.");
+      }
+      const replacement = await prepareRuntime(runtime);
+      const previous = child;
+      const previousCompletion = childCompletion;
+      let previousStopped = false;
+      if (childClosed || !previousCompletion) {
+        await replacement.prepared?.dispose?.();
+        throw new Error("Cannot reload a stopped Theme development server.");
+      }
+      restarting = true;
+      try {
+        terminateDevelopmentProcess(previous, ownsProcessGroup);
+        await previousCompletion;
+        previousStopped = true;
+        await active.prepared?.dispose?.();
+        active = {};
+        restarting = false;
+        start(replacement.environment);
+        active = replacement;
+      } catch (error) {
+        await replacement.prepared?.dispose?.();
+        // Once the previous child has stopped, a failed replacement cannot be
+        // represented as a healthy development handle. Settle `wait()` so the
+        // CLI exits instead of remaining attached to a server that no longer
+        // exists.
+        if (previousStopped) {
+          closed = true;
+          resolveCompleted(1);
+        }
+        throw error;
+      } finally {
+        restarting = false;
+      }
     },
     close() {
       if (closing) return closing;
       closing = (async () => {
-        if (child.exitCode === null && child.signalCode === null)
-          child.kill("SIGTERM");
-        await completed;
+        closed = true;
+        if (child && !childClosed) {
+          restarting = true;
+          const stopped = childCompletion;
+          terminateDevelopmentProcess(child, ownsProcessGroup);
+          await stopped;
+          restarting = false;
+        }
+        resolveCompleted(0);
+        await finalized;
       })();
       return closing;
     },

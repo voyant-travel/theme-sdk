@@ -1,13 +1,33 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const resolvePublicationSystemRoute = vi.fn();
+const resolveThemePublicApiRoute = vi.fn();
 
-vi.mock("virtual:voyant-theme", () => ({ resolvePublicationSystemRoute }));
+vi.mock("virtual:voyant-theme", () => ({
+  resolvePublicationSystemRoute,
+  resolveThemePublicApiRoute,
+}));
 
 const { onRequest } = await import("../src/system-middleware.js");
 
 describe("theme system middleware", () => {
-  beforeEach(() => resolvePublicationSystemRoute.mockReset());
+  beforeEach(() => {
+    resolvePublicationSystemRoute.mockReset();
+    resolveThemePublicApiRoute.mockReset();
+  });
+
+  it("serves a connected Public API response before theme routes", async () => {
+    const relayed = Response.json({ data: [] });
+    resolveThemePublicApiRoute.mockResolvedValue(relayed);
+    const next = vi.fn();
+    const request = new Request(
+      "http://localhost:4321/v1/public/catalog/search",
+    );
+
+    await expect(onRequest({ request }, next)).resolves.toBe(relayed);
+    expect(resolvePublicationSystemRoute).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+  });
 
   it("returns a publication system document without entering theme middleware", async () => {
     const systemResponse = new Response("Not found", {

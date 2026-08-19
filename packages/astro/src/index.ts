@@ -9,6 +9,18 @@ import {
 import type { AstroIntegration } from "astro";
 import { CLOUDFLARE_THEME_RUNTIME } from "./deployment.js";
 
+const DEVELOPMENT_ENV_NAMES = [
+  "VOYANT_THEME_DEVELOPMENT_RUNTIME",
+  "VOYANT_THEME_DEVELOPMENT_RUNTIME_ADAPTER",
+  "VOYANT_THEME_DEVELOPMENT_CAPABILITY",
+] as const;
+
+const DEVELOPMENT_SSR_ENTRIES = [
+  "@voyant-travel/astro/runtime",
+  "@voyant-travel/astro/middleware",
+  "@voyant-travel/astro/system-middleware",
+] as const;
+
 const VIRTUAL_ID = "virtual:voyant-theme";
 const RESOLVED_VIRTUAL_ID = `\0${VIRTUAL_ID}`;
 
@@ -22,6 +34,7 @@ export interface VirtualVoyantThemeModule {
   resolveThemeContext(
     input: string | URL,
   ): Promise<import("@voyant-travel/theme").ThemePageContext>;
+  resolveThemePublicApiRoute(request: Request): Promise<Response | undefined>;
 }
 
 /**
@@ -35,6 +48,7 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
     hooks: {
       "astro:config:setup": ({
         addMiddleware,
+        command,
         config,
         updateConfig,
         logger,
@@ -65,24 +79,50 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
           "<",
           "\\u003c",
         );
+        const developmentEnvironment =
+          command === "dev"
+            ? Object.fromEntries(
+                DEVELOPMENT_ENV_NAMES.flatMap((name) => {
+                  const value = process.env[name];
+                  return value === undefined ? [] : [[name, value]];
+                }),
+              )
+            : {};
         updateConfig({
           vite: {
+            ...(command === "dev"
+              ? {
+                  ssr: {
+                    optimizeDeps: { include: [...DEVELOPMENT_SSR_ENTRIES] },
+                  },
+                }
+              : {}),
             plugins: [
               {
                 name: "voyant-theme-virtual-module",
                 resolveId(id) {
                   return id === VIRTUAL_ID ? RESOLVED_VIRTUAL_ID : undefined;
                 },
-                load(id) {
+                load(id, loadOptions) {
                   if (id !== RESOLVED_VIRTUAL_ID) return undefined;
+                  const privateEnvironment =
+                    loadOptions?.ssr &&
+                    Object.keys(developmentEnvironment).length > 0
+                      ? JSON.stringify(developmentEnvironment).replaceAll(
+                          "<",
+                          "\\u003c",
+                        )
+                      : "undefined";
                   return [
-                    'import { createThemeContextResolver } from "@voyant-travel/astro/runtime";',
+                    'import { createThemeContextResolver, resolveThemePublicApiRoute as resolvePublicApiRoute } from "@voyant-travel/astro/runtime";',
                     'import { resolvePublicationSystemRoute as resolveSystemRoute } from "@voyant-travel/astro/runtime";',
                     'import { env } from "cloudflare:workers";',
                     `export const theme = ${serialized};`,
                     "export const manifest = theme.manifest;",
                     "const resolveContext = createThemeContextResolver(theme);",
-                    "export const resolveThemeContext = (input) => resolveContext(input, env);",
+                    `const privateEnvironment = ${privateEnvironment};`,
+                    "export const resolveThemeContext = (input) => resolveContext(input, env, privateEnvironment);",
+                    "export const resolveThemePublicApiRoute = (request) => resolvePublicApiRoute(request, privateEnvironment);",
                     "export const resolvePublicationSystemRoute = (request) => resolveSystemRoute(request, env);",
                   ].join("\n");
                 },
@@ -113,15 +153,22 @@ export {
 } from "./editor-bridge.js";
 
 export {
+  CONNECTED_CONTEXT_TIMEOUT_MS,
+  CONNECTED_PUBLIC_API_PATH,
   createThemeContextResolver,
   PUBLICATION_BINDING_NAMES,
   PUBLICATION_REQUEST_HEADERS,
   PUBLICATION_RESPONSE_HEADERS,
   type PublicationFetcher,
   readPublicationBindings,
+  readThemeDevelopmentRuntime,
   resolvePublicationSystemRoute,
+  resolveThemePublicApiRoute,
+  THEME_DEVELOPMENT_RUNTIME_ADAPTER_ID,
+  THEME_DEVELOPMENT_RUNTIME_ENV_NAMES,
   type ThemeContextResolver,
   ThemeRuntimeError,
   type ThemeRuntimeErrorCode,
   type VoyantPublicationBindings,
+  type VoyantThemeDevelopmentRuntime,
 } from "./runtime.js";

@@ -5,6 +5,31 @@ development renders `theme.config.ts` fixtures. A Voyant deployment renders the
 same `v1` context types from the selected publication without rebuilding
 theme source when operators publish content.
 
+Connected local development is a third, server-only mode. The proprietary CLI
+starts Astro with the validated `voyant.theme-development-runtime.v1`
+descriptor, Adapter id `voyant-platform`, and a short-lived capability in
+`VOYANT_THEME_DEVELOPMENT_CAPABILITY`. The capability is inherited only in the
+Astro server process; it is never a `PUBLIC_*`/`VITE_*` value, URL component,
+query parameter, argument, or file.
+
+Runtime selection is strict. A complete managed publication binding set has
+precedence. Any partial managed set fails closed. Only when managed bindings
+are entirely absent can a complete connected-development set be selected; a
+partial, malformed, expired, or differently adapted set also fails closed.
+Fixtures are used only when neither runtime is configured.
+
+For each connected resolution, Astro creates a new `POST` to the descriptor's
+`contentEndpoint` with only JSON and contract headers plus
+`Authorization: Bearer <capability>`. The canonical JSON body contains, in
+order, the canonical `path`, `perspective`, `sessionId`, and `manifestDigest`.
+The full local URL and its query are not sent to the platform. Browser
+authorization, cookies, and arbitrary caller headers are never forwarded. The
+request is aborted after 10 seconds. Responses pass through the same 2 MiB
+bound, readable contract upgrade, schema, locale-header, requested-path, and
+typed-404 checks as managed publication responses. Connected responses are
+mutable and are therefore fetched afresh rather than stored in the publication
+memo.
+
 This contract follows the current official Astro Cloudflare adapter:
 
 - server output uses `output: "server"` and `@astrojs/cloudflare`;

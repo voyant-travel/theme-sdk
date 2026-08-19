@@ -140,6 +140,13 @@ export {
   upgradeThemeContextResponse,
 } from "./contract.js";
 export {
+  parseThemeDevelopmentRuntimeDescriptor,
+  THEME_DEVELOPMENT_RUNTIME_SCHEMA_VERSION,
+  THEME_EDITOR_PROTOCOL_VERSION,
+  type ThemeDevelopmentRuntimeDescriptor,
+  themeDevelopmentRuntimeDescriptorSchema,
+} from "./development-runtime.js";
+export {
   type DiagnosticSeverity,
   type DiagnosticSource,
   type ThemeDiagnostic,

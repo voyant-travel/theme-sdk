@@ -1,13 +1,23 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  CONNECTED_CONTEXT_TIMEOUT_MS,
   createThemeContextResolver,
   PUBLICATION_BINDING_NAMES,
   PUBLICATION_REQUEST_HEADERS,
   PUBLICATION_RESPONSE_HEADERS,
+  readThemeDevelopmentRuntime,
   resolvePublicationSystemRoute,
+  resolveThemePublicApiRoute,
+  THEME_DEVELOPMENT_RUNTIME_ADAPTER_ID,
+  THEME_DEVELOPMENT_RUNTIME_ENV_NAMES,
   ThemeRuntimeError,
   type VoyantPublicationBindings,
 } from "../src/runtime.js";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
 
 const theme = {
   contractVersion: "v1" as const,
@@ -89,6 +99,34 @@ function bindings(
   };
 }
 
+function developmentEnvironment(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    VOYANT_THEME_DEVELOPMENT_RUNTIME: JSON.stringify({
+      schemaVersion: "voyant.theme-development-runtime.v1",
+      sessionId: "session_123",
+      themeId: "theme_123",
+      siteId: "site_123",
+      installationId: "installation_123",
+      manifestDigest: `sha256:${"a".repeat(64)}`,
+      perspective: "development",
+      contentEndpoint: "https://sandbox.onvoyant.com/theme-development/content",
+      publicApiEndpoint:
+        "https://sandbox.onvoyant.com/theme-development/public-api",
+      editor: {
+        baseUrl: "https://sandbox.onvoyant.com/theme-editor",
+        protocolVersion: "voyant.theme-editor.v1",
+      },
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    }),
+    VOYANT_THEME_DEVELOPMENT_RUNTIME_ADAPTER:
+      THEME_DEVELOPMENT_RUNTIME_ADAPTER_ID,
+    VOYANT_THEME_DEVELOPMENT_CAPABILITY: "private-capability",
+    ...overrides,
+  };
+}
+
 describe("createThemeContextResolver", () => {
   it("rejects an invalid contract before rendering", () => {
     expect(() =>
@@ -103,6 +141,192 @@ describe("createThemeContextResolver", () => {
       kind: "home",
       title: "Fixture home",
     });
+  });
+
+  it("loads connected development context through a canonical private request", async () => {
+    const connectedFetch = vi.fn(async (_request: RequestInfo | URL) =>
+      publishedResponse(),
+    );
+    vi.stubGlobal("fetch", connectedFetch);
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(
+      resolve(
+        "http://localhost:4321/stories/north?locale=en#selection",
+        undefined,
+        developmentEnvironment(),
+      ),
+    ).resolves.toMatchObject({ kind: "content", title: "Published story" });
+
+    expect(connectedFetch).toHaveBeenCalledTimes(1);
+    const request = connectedFetch.mock.calls[0]?.[0];
+    expect(request).toBeInstanceOf(Request);
+    if (!(request instanceof Request)) throw new Error("Expected a Request.");
+    expect(request.url).toBe(
+      "https://sandbox.onvoyant.com/theme-development/content",
+    );
+    expect(request.method).toBe("POST");
+    expect(request.headers.get("authorization")).toBe(
+      "Bearer private-capability",
+    );
+    expect(request.headers.get("content-type")).toBe("application/json");
+    expect(
+      request.headers.get(PUBLICATION_REQUEST_HEADERS.contractVersion),
+    ).toBe(theme.contractVersion);
+    expect(request.headers.get("cookie")).toBeNull();
+    expect(request.headers.get(PUBLICATION_REQUEST_HEADERS.siteId)).toBeNull();
+    await expect(request.json()).resolves.toEqual({
+      path: "/stories/north",
+      perspective: "development",
+      sessionId: "session_123",
+      manifestDigest: `sha256:${"a".repeat(64)}`,
+    });
+  });
+
+  it("bounds a connected relay outage", async () => {
+    vi.useFakeTimers();
+    const connectedFetch = vi.fn(
+      async (request: RequestInfo | URL): Promise<Response> =>
+        new Promise((_resolve, reject) => {
+          if (!(request instanceof Request)) {
+            reject(new Error("Expected a Request."));
+            return;
+          }
+          request.signal.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        }),
+    );
+    vi.stubGlobal("fetch", connectedFetch);
+    const resolve = createThemeContextResolver(theme);
+    const pending = resolve(
+      "http://localhost:4321/stories/north",
+      undefined,
+      developmentEnvironment(),
+    );
+
+    const rejection = expect(pending).rejects.toMatchObject({
+      code: "THEME_CONTEXT_FETCH_FAILED",
+    });
+    await vi.advanceTimersByTimeAsync(CONNECTED_CONTEXT_TIMEOUT_MS);
+    await rejection;
+    const request = connectedFetch.mock.calls[0]?.[0];
+    expect(request).toBeInstanceOf(Request);
+    expect((request as Request).signal.aborted).toBe(true);
+  });
+
+  it("rejects outer whitespace instead of normalizing a capability", async () => {
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(
+      resolve(
+        "http://localhost:4321/stories/north",
+        undefined,
+        developmentEnvironment({
+          VOYANT_THEME_DEVELOPMENT_CAPABILITY: " private-capability ",
+        }),
+      ),
+    ).rejects.toMatchObject({ code: "THEME_RUNTIME_BINDINGS_INVALID" });
+  });
+
+  it("fetches connected mutable content afresh for every resolution", async () => {
+    const connectedFetch = vi.fn(async () => publishedResponse());
+    vi.stubGlobal("fetch", connectedFetch);
+    const resolve = createThemeContextResolver(theme);
+    const environment = developmentEnvironment();
+
+    await resolve(
+      "http://localhost:4321/stories/north",
+      undefined,
+      environment,
+    );
+    await resolve(
+      "http://localhost:4321/stories/north",
+      undefined,
+      environment,
+    );
+
+    expect(connectedFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("preserves managed publication precedence over connected development", async () => {
+    const publicationFetch = vi.fn(async () => publishedResponse());
+    const connectedFetch = vi.fn(async () => publishedResponse());
+    vi.stubGlobal("fetch", connectedFetch);
+    const resolve = createThemeContextResolver(theme);
+
+    await resolve(
+      "https://north.example/stories/north",
+      bindings(publicationFetch),
+      developmentEnvironment({
+        VOYANT_THEME_DEVELOPMENT_RUNTIME: "not json",
+      }),
+    );
+
+    expect(publicationFetch).toHaveBeenCalledTimes(1);
+    expect(connectedFetch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["partial", { VOYANT_THEME_DEVELOPMENT_RUNTIME: "{}" }],
+    [
+      "wrong Adapter",
+      developmentEnvironment({
+        VOYANT_THEME_DEVELOPMENT_RUNTIME_ADAPTER: "other-platform",
+      }),
+    ],
+    [
+      "malformed descriptor",
+      developmentEnvironment({ VOYANT_THEME_DEVELOPMENT_RUNTIME: "not json" }),
+    ],
+    [
+      "expired descriptor",
+      developmentEnvironment({
+        VOYANT_THEME_DEVELOPMENT_RUNTIME: JSON.stringify({
+          ...JSON.parse(
+            String(developmentEnvironment().VOYANT_THEME_DEVELOPMENT_RUNTIME),
+          ),
+          expiresAt: new Date(Date.now() - 60_000).toISOString(),
+        }),
+      }),
+    ],
+  ])("fails closed for %s connected configuration", async (_label, env) => {
+    const connectedFetch = vi.fn(async () => publishedResponse());
+    vi.stubGlobal("fetch", connectedFetch);
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(
+      resolve("http://localhost:4321/stories/north", undefined, env),
+    ).rejects.toMatchObject({ code: "THEME_RUNTIME_BINDINGS_INVALID" });
+    expect(connectedFetch).not.toHaveBeenCalled();
+  });
+
+  it("does not let connected configuration bypass partial managed bindings", async () => {
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(
+      resolve(
+        "https://north.example/stories/north",
+        { VOYANT_SITE_ID: "site_123" },
+        developmentEnvironment(),
+      ),
+    ).rejects.toMatchObject({ code: "THEME_RUNTIME_BINDINGS_INVALID" });
+  });
+
+  it("uses the publication validator for connected response path and locale", async () => {
+    const connectedFetch = vi.fn(async () =>
+      publishedResponse(publishedContext("/stories/elsewhere"), "fr"),
+    );
+    vi.stubGlobal("fetch", connectedFetch);
+    const resolve = createThemeContextResolver(theme);
+
+    await expect(
+      resolve(
+        "http://localhost:4321/stories/north",
+        undefined,
+        developmentEnvironment(),
+      ),
+    ).rejects.toMatchObject({ code: "THEME_CONTEXT_RESPONSE_INVALID" });
   });
 
   it("requests its own contract version and reads an older publication", async () => {
@@ -324,6 +548,20 @@ describe("createThemeContextResolver", () => {
     ]);
   });
 
+  it("keeps the connected environment contract private and intentionally small", () => {
+    expect(THEME_DEVELOPMENT_RUNTIME_ENV_NAMES).toEqual([
+      "VOYANT_THEME_DEVELOPMENT_RUNTIME",
+      "VOYANT_THEME_DEVELOPMENT_RUNTIME_ADAPTER",
+      "VOYANT_THEME_DEVELOPMENT_CAPABILITY",
+    ]);
+    expect(readThemeDevelopmentRuntime(developmentEnvironment())).toMatchObject(
+      {
+        capability: "private-capability",
+        descriptor: { sessionId: "session_123" },
+      },
+    );
+  });
+
   it("fetches one context when the same page is resolved twice", async () => {
     // The page resolves its own context and the injection middleware resolves
     // it again after rendering. That must cost one fetch, not two.
@@ -385,6 +623,60 @@ describe("createThemeContextResolver", () => {
       resolve("https://north.example/stories/north", env),
     ).resolves.toMatchObject({ kind: "content" });
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("resolveThemePublicApiRoute", () => {
+  it("relays a canonical browser call without exposing browser credentials", async () => {
+    const fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const request = input instanceof Request ? input : new Request(input);
+      expect(request.url).toBe(
+        "https://sandbox.onvoyant.com/theme-development/public-api/v1/public/catalog/search?market=ro",
+      );
+      expect(request.headers.get("authorization")).toBe(
+        "Bearer private-capability",
+      );
+      expect(request.headers.get("cookie")).toBeNull();
+      expect(request.headers.get("x-api-key")).toBeNull();
+      await expect(request.json()).resolves.toEqual({ query: "Danube" });
+      return Response.json({ data: [] });
+    });
+    const response = await resolveThemePublicApiRoute(
+      new Request("http://localhost:4321/v1/public/catalog/search?market=ro", {
+        method: "POST",
+        headers: {
+          cookie: "browser=session",
+          "content-type": "application/json",
+          "x-api-key": "must-not-cross",
+        },
+        body: JSON.stringify({ query: "Danube" }),
+      }),
+      developmentEnvironment(),
+      fetch,
+    );
+
+    expect(response?.status).toBe(200);
+    expect(response?.headers.get("cache-control")).toBe("private, no-store");
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("leaves non-Public-API and non-connected requests to Astro", async () => {
+    const fetch = vi.fn();
+    await expect(
+      resolveThemePublicApiRoute(
+        new Request("http://localhost:4321/tours"),
+        developmentEnvironment(),
+        fetch,
+      ),
+    ).resolves.toBeUndefined();
+    await expect(
+      resolveThemePublicApiRoute(
+        new Request("http://localhost:4321/v1/public/settings"),
+        undefined,
+        fetch,
+      ),
+    ).resolves.toBeUndefined();
+    expect(fetch).not.toHaveBeenCalled();
   });
 });
 
