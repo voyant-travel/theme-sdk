@@ -1,8 +1,10 @@
 # Voyant Theme SDK
 
-Public, versioned contracts and Astro tooling for building Voyant storefront
-themes. The SDK is deliberately theme-facing: themes render published context
-objects and do not depend on Voyant Cloud services, databases, or internal APIs.
+Public, versioned contracts and Astro tooling for building Themes for Voyant
+Sites. Every Voyant Theme is an Astro project; it can use Astro integrations
+such as React, Vue, or Solid while Astro remains the required framework. The
+SDK is deliberately Theme-facing: Themes render published context objects and
+do not depend on Voyant Cloud services, databases, or internal APIs.
 
 `v1` is the stable public contract for tour, cruise, managed-shopping, Trip,
 and Book-all themes. Published context objects remain forward compatible:

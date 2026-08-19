@@ -12,7 +12,7 @@ import { injectThemeCode, isInjectableDocument } from "./injection.js";
  * so the resolver's memo answers this lookup without a second fetch.
  *
  * Injection never fails a page. An operator's analytics tag is not worth a
- * blank storefront, so a context that cannot be resolved here leaves the
+ * blank Site, so a context that cannot be resolved here leaves the
  * response exactly as the theme rendered it — the page itself has already
  * succeeded or failed on its own resolution by this point.
  */

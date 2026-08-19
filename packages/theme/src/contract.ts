@@ -9,7 +9,7 @@ export const CONTRACT_VERSION = "v1" as const;
  * A publication and a theme release are separately versioned artifacts with
  * independent lifecycles — an operator publishes content far more often than
  * they redeploy a theme — so a reader pinned to a single literal forces both to
- * move in the same instant, and the storefront is down in between whichever
+ * move in the same instant, and the Site is down in between whichever
  * order you pick. A theme therefore declares `CONTRACT_VERSION` when it asks
  * and accepts any of these when it reads.
  *

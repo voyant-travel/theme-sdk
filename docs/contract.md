@@ -338,7 +338,7 @@ while every object is rebuilt with keys in ascending UTF-16 code-unit order.
 A publication and a theme release are separately versioned artifacts with
 independent lifecycles. An operator publishes content far more often than they
 redeploy a theme, so the two cannot be required to move in the same instant —
-whichever order you pick, a hard cutover leaves the storefront failing in
+whichever order you pick, a hard cutover leaves the Site failing in
 between.
 
 A theme therefore **declares one version and reads several**. It sends
