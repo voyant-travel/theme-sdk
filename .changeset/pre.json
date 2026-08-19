@@ -1,0 +1,13 @@
+{
+  "mode": "pre",
+  "tag": "canary",
+  "initialVersions": {
+    "@voyant-travel/example-theme": "0.0.9",
+    "@voyant-travel/astro": "1.0.2",
+    "@voyant-travel/theme": "1.6.0"
+  },
+  "changesets": [
+    "clean-dragons-connect",
+    "tidy-bears-connect"
+  ]
+}
