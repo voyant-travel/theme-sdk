@@ -67,7 +67,15 @@ describe("voyantTheme middleware ordering", () => {
       [{ entrypoint: "@voyant-travel/astro/middleware", order: "post" }],
     ]);
 
-    const vitePlugin = updateConfig.mock.calls[0]?.[0]?.vite?.plugins?.[0];
+    const viteConfig = updateConfig.mock.calls[0]?.[0]?.vite;
+    expect(viteConfig?.ssr?.optimizeDeps?.include).toEqual([
+      "@voyant-travel/astro/runtime",
+      "@voyant-travel/astro/middleware",
+      "@voyant-travel/astro/system-middleware",
+    ]);
+    expect(viteConfig?.optimizeDeps).toBeUndefined();
+
+    const vitePlugin = viteConfig?.plugins?.[0];
     const serverSource = vitePlugin?.load?.("\0virtual:voyant-theme", {
       ssr: true,
     });
@@ -102,6 +110,7 @@ describe("voyantTheme middleware ordering", () => {
       updateConfig,
     } as never);
     const vitePlugin = updateConfig.mock.calls[0]?.[0]?.vite?.plugins?.[0];
+    expect(updateConfig.mock.calls[0]?.[0]?.vite?.ssr).toBeUndefined();
     const source = vitePlugin?.load?.("\0virtual:voyant-theme", { ssr: true });
     expect(source).not.toContain("must-not-build");
     expect(source).toContain("const privateEnvironment = undefined");

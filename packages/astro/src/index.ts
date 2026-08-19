@@ -15,6 +15,12 @@ const DEVELOPMENT_ENV_NAMES = [
   "VOYANT_THEME_DEVELOPMENT_CAPABILITY",
 ] as const;
 
+const DEVELOPMENT_SSR_ENTRIES = [
+  "@voyant-travel/astro/runtime",
+  "@voyant-travel/astro/middleware",
+  "@voyant-travel/astro/system-middleware",
+] as const;
+
 const VIRTUAL_ID = "virtual:voyant-theme";
 const RESOLVED_VIRTUAL_ID = `\0${VIRTUAL_ID}`;
 
@@ -84,6 +90,13 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
             : {};
         updateConfig({
           vite: {
+            ...(command === "dev"
+              ? {
+                  ssr: {
+                    optimizeDeps: { include: [...DEVELOPMENT_SSR_ENTRIES] },
+                  },
+                }
+              : {}),
             plugins: [
               {
                 name: "voyant-theme-virtual-module",
