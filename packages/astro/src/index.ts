@@ -9,6 +9,12 @@ import {
 import type { AstroIntegration } from "astro";
 import { CLOUDFLARE_THEME_RUNTIME } from "./deployment.js";
 
+const DEVELOPMENT_ENV_NAMES = [
+  "VOYANT_THEME_DEVELOPMENT_RUNTIME",
+  "VOYANT_THEME_DEVELOPMENT_RUNTIME_ADAPTER",
+  "VOYANT_THEME_DEVELOPMENT_CAPABILITY",
+] as const;
+
 const VIRTUAL_ID = "virtual:voyant-theme";
 const RESOLVED_VIRTUAL_ID = `\0${VIRTUAL_ID}`;
 
@@ -36,6 +42,7 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
     hooks: {
       "astro:config:setup": ({
         addMiddleware,
+        command,
         config,
         updateConfig,
         logger,
@@ -66,6 +73,15 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
           "<",
           "\\u003c",
         );
+        const developmentEnvironment =
+          command === "dev"
+            ? Object.fromEntries(
+                DEVELOPMENT_ENV_NAMES.flatMap((name) => {
+                  const value = process.env[name];
+                  return value === undefined ? [] : [[name, value]];
+                }),
+              )
+            : {};
         updateConfig({
           vite: {
             plugins: [
@@ -74,8 +90,16 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
                 resolveId(id) {
                   return id === VIRTUAL_ID ? RESOLVED_VIRTUAL_ID : undefined;
                 },
-                load(id) {
+                load(id, loadOptions) {
                   if (id !== RESOLVED_VIRTUAL_ID) return undefined;
+                  const privateEnvironment =
+                    loadOptions?.ssr &&
+                    Object.keys(developmentEnvironment).length > 0
+                      ? JSON.stringify(developmentEnvironment).replaceAll(
+                          "<",
+                          "\\u003c",
+                        )
+                      : "undefined";
                   return [
                     'import { createThemeContextResolver, resolveThemePublicApiRoute as resolvePublicApiRoute } from "@voyant-travel/astro/runtime";',
                     'import { resolvePublicationSystemRoute as resolveSystemRoute } from "@voyant-travel/astro/runtime";',
@@ -83,7 +107,7 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
                     `export const theme = ${serialized};`,
                     "export const manifest = theme.manifest;",
                     "const resolveContext = createThemeContextResolver(theme);",
-                    'const privateEnvironment = import.meta.env.SSR && typeof process !== "undefined" ? process.env : undefined;',
+                    `const privateEnvironment = ${privateEnvironment};`,
                     "export const resolveThemeContext = (input) => resolveContext(input, env, privateEnvironment);",
                     "export const resolveThemePublicApiRoute = (request) => resolvePublicApiRoute(request, privateEnvironment);",
                     "export const resolvePublicationSystemRoute = (request) => resolveSystemRoute(request, env);",

@@ -83,6 +83,7 @@ describe("validateTheme", () => {
 
 function childProcessDouble(): ChildProcess & {
   emitError(error: Error): void;
+  emitWrapperExit(code: number): void;
   emitExit(code: number): void;
 } {
   class TestChildProcess extends EventEmitter {
@@ -93,6 +94,7 @@ function childProcessDouble(): ChildProcess & {
     kill() {
       this.killed = true;
       this.emit("exit", 0, "SIGTERM");
+      this.emit("close", 0, "SIGTERM");
       return true;
     }
 
@@ -100,14 +102,20 @@ function childProcessDouble(): ChildProcess & {
       this.emit("error", error);
     }
 
-    emitExit(code: number) {
+    emitWrapperExit(code: number) {
       this.exitCode = code;
       this.emit("exit", code, null);
+    }
+
+    emitExit(code: number) {
+      this.emitWrapperExit(code);
+      this.emit("close", code, null);
     }
   }
 
   return new TestChildProcess() as unknown as ChildProcess & {
     emitError(error: Error): void;
+    emitWrapperExit(code: number): void;
     emitExit(code: number): void;
   };
 }
@@ -212,6 +220,40 @@ describe("developTheme", () => {
     ).resolves.toEqual([undefined, undefined]);
   });
 
+  it("keeps an Astro daemon attached and restartable after its wrapper exits", async () => {
+    const first = childProcessDouble();
+    const second = childProcessDouble();
+    const children = [first, second];
+    const handle = await developTheme({
+      projectRoot: await projectWithConfig(),
+      runner: () => {
+        const child = children.shift();
+        if (!child) throw new Error("Unexpected spawn.");
+        return child;
+      },
+    });
+    let settled = false;
+    void handle.wait().then(() => {
+      settled = true;
+    });
+
+    first.emitWrapperExit(0);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(settled).toBe(false);
+
+    await handle.reload({
+      descriptor: connectedDescriptor(),
+      adapter: { id: "voyant-connected", prepare: () => ({}) },
+    });
+    expect(first.killed).toBe(true);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(settled).toBe(false);
+
+    await handle.close();
+    expect(second.killed).toBe(true);
+    await expect(handle.wait()).resolves.toBe(0);
+  });
+
   it("keeps the old fixture-backed call free of connected runtime state", async () => {
     const child = childProcessDouble();
     let received: { args: string[]; env?: NodeJS.ProcessEnv } | undefined;
@@ -223,7 +265,7 @@ describe("developTheme", () => {
       },
     });
 
-    expect(received?.env).toBeUndefined();
+    expect(received?.env).toEqual({ ASTRO_DEV_BACKGROUND: "0" });
     expect(received?.args).toEqual(
       expect.arrayContaining(["dev", "--host", "localhost", "--port", "4321"]),
     );
@@ -272,6 +314,7 @@ describe("developTheme", () => {
     expect(received?.env?.VOYANT_PRIVATE_DEVELOPMENT_CAPABILITY).toBe(
       "short-lived-secret",
     );
+    expect(received?.env?.ASTRO_DEV_BACKGROUND).toBe("0");
     child.emitExit(0);
     await expect(handle.wait()).resolves.toBe(0);
     expect(disposed).toBe(true);

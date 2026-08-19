@@ -40,6 +40,9 @@ const theme = {
 
 describe("voyantTheme middleware ordering", () => {
   it("guards platform routes before themes and injects code after themes", () => {
+    vi.stubEnv("VOYANT_THEME_DEVELOPMENT_RUNTIME", '{"sessionId":"tds_123"}');
+    vi.stubEnv("VOYANT_THEME_DEVELOPMENT_RUNTIME_ADAPTER", "voyant-platform");
+    vi.stubEnv("VOYANT_THEME_DEVELOPMENT_CAPABILITY", "private-capability");
     const integration = voyantTheme({ theme });
     const addMiddleware = vi.fn();
     const updateConfig = vi.fn();
@@ -48,6 +51,7 @@ describe("voyantTheme middleware ordering", () => {
 
     setup({
       addMiddleware,
+      command: "dev",
       config: { root: new URL("file:///theme/") },
       logger: { error: vi.fn() },
       updateConfig,
@@ -64,15 +68,43 @@ describe("voyantTheme middleware ordering", () => {
     ]);
 
     const vitePlugin = updateConfig.mock.calls[0]?.[0]?.vite?.plugins?.[0];
-    const source = vitePlugin?.load?.("\0virtual:voyant-theme");
-    expect(source).toContain("import.meta.env.SSR");
-    expect(source).toContain("process.env");
-    expect(source).toContain("resolveContext(input, env, privateEnvironment)");
-    expect(source).toContain(
+    const serverSource = vitePlugin?.load?.("\0virtual:voyant-theme", {
+      ssr: true,
+    });
+    const clientSource = vitePlugin?.load?.("\0virtual:voyant-theme", {
+      ssr: false,
+    });
+    expect(serverSource).not.toContain("process.env");
+    expect(serverSource).toContain("private-capability");
+    expect(serverSource).toContain(
+      "resolveContext(input, env, privateEnvironment)",
+    );
+    expect(serverSource).toContain(
       "resolvePublicApiRoute(request, privateEnvironment)",
     );
-    expect(source).not.toContain("VOYANT_THEME_DEVELOPMENT_CAPABILITY");
-    expect(source).not.toContain("PUBLIC_");
-    expect(source).not.toContain("VITE_");
+    expect(clientSource).not.toContain("private-capability");
+    expect(clientSource).toContain("const privateEnvironment = undefined");
+    vi.unstubAllEnvs();
+  });
+
+  it("never embeds connected development secrets in build modules", () => {
+    vi.stubEnv("VOYANT_THEME_DEVELOPMENT_CAPABILITY", "must-not-build");
+    const integration = voyantTheme({ theme });
+    const updateConfig = vi.fn();
+    const setup = integration.hooks?.["astro:config:setup"];
+    if (typeof setup !== "function") throw new Error("Expected setup hook.");
+
+    setup({
+      addMiddleware: vi.fn(),
+      command: "build",
+      config: { root: new URL("file:///theme/") },
+      logger: { error: vi.fn() },
+      updateConfig,
+    } as never);
+    const vitePlugin = updateConfig.mock.calls[0]?.[0]?.vite?.plugins?.[0];
+    const source = vitePlugin?.load?.("\0virtual:voyant-theme", { ssr: true });
+    expect(source).not.toContain("must-not-build");
+    expect(source).toContain("const privateEnvironment = undefined");
+    vi.unstubAllEnvs();
   });
 });

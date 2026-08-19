@@ -215,6 +215,8 @@ export interface CommandInvocation {
   output?: "inherit" | "silent";
   /** Private inherited values. They are never added to command arguments. */
   env?: NodeJS.ProcessEnv;
+  /** Run a long-lived development command in an SDK-owned process group. */
+  processGroup?: boolean;
 }
 
 export type ThemeCommandRunner = (
@@ -566,12 +568,14 @@ const defaultRunner: ThemeCommandRunner = ({
   signal,
   output,
   env,
+  processGroup,
 }) =>
   spawn(command, args, {
     cwd,
     signal,
     stdio: output === "silent" ? ["inherit", "ignore", "inherit"] : "inherit",
     shell: false,
+    detached: processGroup && process.platform !== "win32",
     env: env ? { ...process.env, ...env } : undefined,
   });
 
@@ -581,10 +585,11 @@ function invocation(
   signal?: AbortSignal,
   output?: "inherit" | "silent",
   env?: NodeJS.ProcessEnv,
+  processGroup?: boolean,
 ): CommandInvocation {
   const [executable, ...args] = command;
   if (!executable) throw new Error("Theme tooling command cannot be empty.");
-  return { command: executable, args, cwd, signal, output, env };
+  return { command: executable, args, cwd, signal, output, env, processGroup };
 }
 
 function validateAdapterId(value: string): string {
@@ -645,11 +650,33 @@ async function localAstroCommand(
   ];
 }
 
-function waitForExit(child: ChildProcess): Promise<number> {
+function waitForClose(child: ChildProcess): Promise<number> {
   return new Promise((resolve, reject) => {
     child.once("error", reject);
-    child.once("exit", (code, signal) => resolve(code ?? (signal ? 1 : 0)));
+    child.once("close", (code, signal) => resolve(code ?? (signal ? 1 : 0)));
   });
+}
+
+function terminateDevelopmentProcess(
+  child: ChildProcess,
+  ownsProcessGroup: boolean,
+): void {
+  if (ownsProcessGroup && typeof child.pid === "number" && child.pid > 0) {
+    try {
+      process.kill(-child.pid, "SIGTERM");
+      return;
+    } catch (error) {
+      if (!isErrnoException(error, "ESRCH")) throw error;
+    }
+  }
+  child.kill("SIGTERM");
+}
+
+function isErrnoException(
+  error: unknown,
+  code: string,
+): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error && error.code === code;
 }
 
 /**
@@ -824,7 +851,7 @@ export async function buildTheme(
         options.output,
       ),
     );
-    const exitCode = await waitForExit(child);
+    const exitCode = await waitForClose(child);
     if (exitCode === 0) {
       try {
         const artifact = await createThemeBuildMetadata({
@@ -907,6 +934,7 @@ export async function developTheme(
     (await localAstroCommand(options.projectRoot, "dev"));
   const command = [...base, "--host", host, "--port", String(port)];
   const projectRoot = path.resolve(options.projectRoot);
+  const ownsProcessGroup = !options.runner && process.platform !== "win32";
   const prepareRuntime = async (
     runtime: ThemeDevelopmentRuntimeReference | undefined,
   ) => {
@@ -937,6 +965,8 @@ export async function developTheme(
 
   let active = await prepareRuntime(options.runtime);
   let child: ChildProcess | undefined;
+  let childCompletion: Promise<number> | undefined;
+  let childClosed = true;
   let closed = false;
   let restarting = false;
   let resolveCompleted!: (exitCode: number) => void;
@@ -945,18 +975,39 @@ export async function developTheme(
   });
 
   const start = (environment: NodeJS.ProcessEnv | undefined) => {
+    // Astro 7 auto-backgrounds itself when it detects an agentic parent. Any
+    // truthy value suppresses that detection; Astro does not interpret the
+    // value. Keep the child in the foreground so this handle owns its lifetime.
+    const childEnvironment = {
+      ...environment,
+      ASTRO_DEV_BACKGROUND: "0",
+    };
     const next = (options.runner ?? defaultRunner)(
-      invocation(command, projectRoot, options.signal, undefined, environment),
+      invocation(
+        command,
+        projectRoot,
+        options.signal,
+        undefined,
+        childEnvironment,
+        true,
+      ),
     );
     child = next;
+    childClosed = false;
     let observed = false;
+    let resolveChildCompletion!: (exitCode: number) => void;
+    childCompletion = new Promise<number>((resolve) => {
+      resolveChildCompletion = resolve;
+    });
     const complete = (exitCode: number) => {
       if (observed) return;
       observed = true;
+      resolveChildCompletion(exitCode);
+      if (child === next) childClosed = true;
       if (!restarting && !closed) resolveCompleted(exitCode);
     };
     next.once("error", () => complete(1));
-    next.once("exit", (code, signal) => complete(code ?? (signal ? 1 : 0)));
+    next.once("close", (code, signal) => complete(code ?? (signal ? 1 : 0)));
     return next;
   };
 
@@ -980,21 +1031,21 @@ export async function developTheme(
     async reload(runtime) {
       if (closed)
         throw new Error("Cannot reload a closed Theme development server.");
-      if (!child || child.exitCode !== null || child.signalCode !== null) {
+      if (!child || childClosed) {
         throw new Error("Cannot reload a stopped Theme development server.");
       }
       const replacement = await prepareRuntime(runtime);
       const previous = child;
+      const previousCompletion = childCompletion;
       let previousStopped = false;
-      if (previous.exitCode !== null || previous.signalCode !== null) {
+      if (childClosed || !previousCompletion) {
         await replacement.prepared?.dispose?.();
         throw new Error("Cannot reload a stopped Theme development server.");
       }
       restarting = true;
       try {
-        const stopped = waitForExit(previous);
-        previous.kill("SIGTERM");
-        await stopped;
+        terminateDevelopmentProcess(previous, ownsProcessGroup);
+        await previousCompletion;
         previousStopped = true;
         await active.prepared?.dispose?.();
         active = {};
@@ -1020,10 +1071,10 @@ export async function developTheme(
       if (closing) return closing;
       closing = (async () => {
         closed = true;
-        if (child && child.exitCode === null && child.signalCode === null) {
+        if (child && !childClosed) {
           restarting = true;
-          const stopped = waitForExit(child);
-          child.kill("SIGTERM");
+          const stopped = childCompletion;
+          terminateDevelopmentProcess(child, ownsProcessGroup);
           await stopped;
           restarting = false;
         }
