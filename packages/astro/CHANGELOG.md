@@ -1,5 +1,13 @@
 # @voyant-travel/astro
 
+## 1.8.0-canary.0
+
+### Patch Changes
+
+- Updated dependencies [4f965da]
+- Updated dependencies [d89ac3d]
+  - @voyant-travel/theme@1.8.0-canary.0
+
 ## 1.7.0
 
 ### Minor Changes

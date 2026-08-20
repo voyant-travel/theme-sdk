@@ -1,6 +1,12 @@
 import type { ChildProcess } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  realpath,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -133,7 +139,7 @@ async function installFakeAstro(root: string): Promise<string> {
   );
   const entry = path.join(directory, "astro.js");
   await writeFile(entry, "");
-  return entry;
+  return realpath(entry);
 }
 
 describe("buildTheme", () => {
