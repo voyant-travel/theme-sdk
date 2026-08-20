@@ -74,16 +74,14 @@ export type ThemeContentFetch = typeof globalThis.fetch;
 export function createThemeContentFetch(
   runtimeEnv: unknown,
 ): ThemeContentFetch {
-  const publication = readPublicationBindings(runtimeEnv);
-  if (!publication) {
-    return async () => {
+  return async (input, init) => {
+    const publication = readPublicationBindings(runtimeEnv);
+    if (!publication) {
       throw new ThemeRuntimeError(
         "THEME_RUNTIME_BINDINGS_INVALID",
         "Voyant managed Content is unavailable outside a managed Theme runtime.",
       );
-    };
-  }
-  return async (input, init) => {
+    }
     const request = new Request(input, init);
     const url = new URL(request.url);
     if (
