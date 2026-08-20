@@ -44,6 +44,7 @@ export const THEME_DEVELOPMENT_RUNTIME_ENV_NAMES = [
 const MAX_CONTEXT_RESPONSE_BYTES = 2 * 1024 * 1024;
 export const CONNECTED_CONTEXT_TIMEOUT_MS = 10_000;
 export const CONNECTED_PUBLIC_API_PATH = "/v1/public" as const;
+export const MANAGED_CONTENT_ORIGIN = "https://content.voyant.invalid" as const;
 
 /** The HTTP subset of a Cloudflare `Fetcher` used by the theme runtime. */
 export interface PublicationFetcher {
@@ -62,6 +63,52 @@ export interface VoyantPublicationBindings {
 export interface VoyantThemeDevelopmentRuntime {
   descriptor: ThemeDevelopmentRuntimeDescriptor;
   capability: string;
+}
+
+export type ThemeContentFetch = typeof globalThis.fetch;
+
+/**
+ * Creates the server-only Fetch transport consumed by
+ * `@voyant-travel/content-client` in a managed Theme.
+ */
+export function createThemeContentFetch(
+  runtimeEnv: unknown,
+): ThemeContentFetch {
+  return async (input, init) => {
+    const publication = readPublicationBindings(runtimeEnv);
+    if (!publication) {
+      throw new ThemeRuntimeError(
+        "THEME_RUNTIME_BINDINGS_INVALID",
+        "Voyant managed Content is unavailable outside a managed Theme runtime.",
+      );
+    }
+    const request = new Request(input, init);
+    const url = new URL(request.url);
+    if (
+      url.origin !== MANAGED_CONTENT_ORIGIN ||
+      !url.pathname.startsWith("/__voyant/content/") ||
+      (request.method !== "GET" && request.method !== "HEAD")
+    ) {
+      throw new ThemeRuntimeError(
+        "THEME_RUNTIME_BINDINGS_INVALID",
+        "Voyant managed Content accepts only scoped read requests.",
+      );
+    }
+    const headers = new Headers({ accept: "application/json" });
+    const ifNoneMatch = request.headers.get("if-none-match");
+    if (ifNoneMatch) headers.set("if-none-match", ifNoneMatch);
+    headers.set(
+      "authorization",
+      `Bearer ${publication.VOYANT_PUBLICATION_TOKEN}`,
+    );
+    return publication.PUBLICATION.fetch(
+      new Request(`${MANAGED_CONTENT_ORIGIN}${url.pathname}${url.search}`, {
+        method: request.method,
+        headers,
+        signal: request.signal,
+      }),
+    );
+  };
 }
 
 const CONNECTED_PUBLIC_API_REQUEST_HEADERS = [

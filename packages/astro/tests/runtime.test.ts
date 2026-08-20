@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   CONNECTED_CONTEXT_TIMEOUT_MS,
+  createThemeContentFetch,
   createThemeContextResolver,
   PUBLICATION_BINDING_NAMES,
   PUBLICATION_REQUEST_HEADERS,
@@ -74,6 +75,70 @@ function publishedContext(path = "/stories/north") {
     },
   };
 }
+
+describe("managed Content transport", () => {
+  it("forwards only current scoped Content reads through PUBLICATION", async () => {
+    const fetch = vi.fn(async (_request: RequestInfo | URL) =>
+      Response.json({ data: { schemas: [] } }),
+    );
+    const contentFetch = createThemeContentFetch(bindings(fetch));
+    const response = await contentFetch(
+      "https://content.voyant.invalid/__voyant/content/schemas/article/documents?limit=20",
+    );
+    expect(response.status).toBe(200);
+    const request = fetch.mock.calls[0]?.[0] as Request;
+    expect(request.url).toBe(
+      "https://content.voyant.invalid/__voyant/content/schemas/article/documents?limit=20",
+    );
+    expect(request.headers.get("authorization")).toBe("Bearer scoped-token");
+  });
+
+  it("resolves request-scoped publication bindings for every fetch", async () => {
+    const firstFetch = vi.fn(async (_request: RequestInfo | URL) =>
+      Response.json({ request: "first" }),
+    );
+    const secondFetch = vi.fn(async (_request: RequestInfo | URL) =>
+      Response.json({ request: "second" }),
+    );
+    let current = bindings(firstFetch);
+    const runtimeEnv = new Proxy({} as VoyantPublicationBindings, {
+      get: (_target, property) => current[property as keyof typeof current],
+    });
+    const contentFetch = createThemeContentFetch(runtimeEnv);
+
+    await contentFetch(
+      "https://content.voyant.invalid/__voyant/content/schemas/article/documents",
+    );
+    current = {
+      ...bindings(secondFetch),
+      VOYANT_PUBLICATION_TOKEN: "second-scoped-token",
+    };
+    await contentFetch(
+      "https://content.voyant.invalid/__voyant/content/schemas/article/documents",
+    );
+
+    expect(firstFetch).toHaveBeenCalledOnce();
+    expect(secondFetch).toHaveBeenCalledOnce();
+    const secondRequest = secondFetch.mock.calls[0]?.[0] as Request;
+    expect(secondRequest.headers.get("authorization")).toBe(
+      "Bearer second-scoped-token",
+    );
+  });
+
+  it("rejects writes and arbitrary proxy origins", async () => {
+    const fetch = vi.fn();
+    const contentFetch = createThemeContentFetch(bindings(fetch));
+    await expect(
+      contentFetch("https://example.com/__voyant/content/schemas"),
+    ).rejects.toMatchObject({ code: "THEME_RUNTIME_BINDINGS_INVALID" });
+    await expect(
+      contentFetch("https://content.voyant.invalid/__voyant/content/schemas", {
+        method: "POST",
+      }),
+    ).rejects.toMatchObject({ code: "THEME_RUNTIME_BINDINGS_INVALID" });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});
 
 function publishedResponse(
   body: {
