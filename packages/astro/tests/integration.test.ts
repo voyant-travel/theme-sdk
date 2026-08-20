@@ -90,6 +90,9 @@ describe("voyantTheme middleware ordering", () => {
     expect(serverSource).toContain(
       "resolvePublicApiRoute(request, privateEnvironment)",
     );
+    expect(serverSource).toContain(
+      "export const contentFetch = createThemeContentFetch(env)",
+    );
     expect(clientSource).not.toContain("private-capability");
     expect(clientSource).toContain("const privateEnvironment = undefined");
     vi.unstubAllEnvs();

@@ -32,6 +32,25 @@ API key. Outside connected development the middleware leaves those routes
 alone: externally hosted Themes use their own `vpk_`/`vsk_`, while the Voyant
 production hosting Adapter remains responsible for its Public API transport.
 
+Managed Themes read structured Site Content through the server-only
+`contentFetch` export. Pair it with `@voyant-travel/content-client`; the
+platform supplies Site scope and always resolves the current published Content
+generation:
+
+```astro
+---
+import { createManagedContentClient } from "@voyant-travel/content-client";
+import { contentFetch } from "virtual:voyant-theme";
+
+const content = createManagedContentClient({ fetch: contentFetch });
+const articles = await content.queryDocuments({ schemaId: "articles" });
+---
+```
+
+Theme code cannot select a different Site, repository, credential, or historic
+generation. `contentFetch` accepts only GET/HEAD requests to the managed Content
+namespace and must never be imported into browser code.
+
 Add `/// <reference types="@voyant-travel/astro/virtual" />` to `src/env.d.ts`
 for editor and type-checker support. The types subpath is owned and published by
 this package.

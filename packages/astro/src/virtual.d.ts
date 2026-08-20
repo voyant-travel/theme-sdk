@@ -14,4 +14,5 @@ declare module "virtual:voyant-theme" {
   export function resolvePublicationSystemRoute(
     request: Request,
   ): Promise<Response | undefined>;
+  export const contentFetch: typeof globalThis.fetch;
 }

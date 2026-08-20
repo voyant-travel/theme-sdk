@@ -35,6 +35,7 @@ export interface VirtualVoyantThemeModule {
     input: string | URL,
   ): Promise<import("@voyant-travel/theme").ThemePageContext>;
   resolveThemePublicApiRoute(request: Request): Promise<Response | undefined>;
+  contentFetch: import("./runtime.js").ThemeContentFetch;
 }
 
 /**
@@ -114,7 +115,7 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
                         )
                       : "undefined";
                   return [
-                    'import { createThemeContextResolver, resolveThemePublicApiRoute as resolvePublicApiRoute } from "@voyant-travel/astro/runtime";',
+                    'import { createThemeContentFetch, createThemeContextResolver, resolveThemePublicApiRoute as resolvePublicApiRoute } from "@voyant-travel/astro/runtime";',
                     'import { resolvePublicationSystemRoute as resolveSystemRoute } from "@voyant-travel/astro/runtime";',
                     'import { env } from "cloudflare:workers";',
                     `export const theme = ${serialized};`,
@@ -123,6 +124,7 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
                     `const privateEnvironment = ${privateEnvironment};`,
                     "export const resolveThemeContext = (input) => resolveContext(input, env, privateEnvironment);",
                     "export const resolveThemePublicApiRoute = (request) => resolvePublicApiRoute(request, privateEnvironment);",
+                    "export const contentFetch = createThemeContentFetch(env);",
                     "export const resolvePublicationSystemRoute = (request) => resolveSystemRoute(request, env);",
                   ].join("\n");
                 },
@@ -155,7 +157,9 @@ export {
 export {
   CONNECTED_CONTEXT_TIMEOUT_MS,
   CONNECTED_PUBLIC_API_PATH,
+  createThemeContentFetch,
   createThemeContextResolver,
+  MANAGED_CONTENT_ORIGIN,
   PUBLICATION_BINDING_NAMES,
   PUBLICATION_REQUEST_HEADERS,
   PUBLICATION_RESPONSE_HEADERS,
@@ -166,6 +170,7 @@ export {
   resolveThemePublicApiRoute,
   THEME_DEVELOPMENT_RUNTIME_ADAPTER_ID,
   THEME_DEVELOPMENT_RUNTIME_ENV_NAMES,
+  type ThemeContentFetch,
   type ThemeContextResolver,
   ThemeRuntimeError,
   type ThemeRuntimeErrorCode,
