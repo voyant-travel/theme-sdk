@@ -4,6 +4,7 @@ import {
   CONTRACT_VERSION,
   catalogProductCategorySchema,
   categoryDetailContextSchema,
+  collectionEntryContextSchema,
   collectionEntrySchema,
   collectionIndexContextSchema,
   contentContextSchema,
@@ -303,6 +304,18 @@ function collectionContextBase() {
 }
 
 describe("collection contexts", () => {
+  it("carries a resolved item-page template without exposing assignments", () => {
+    const context = collectionEntryContextSchema.parse({
+      ...collectionContextBase(),
+      kind: "collectionEntry",
+      path: "/guides/transylvania",
+      title: "Transylvania",
+      templateId: "editorial-guide",
+      entry: collectionEntry(),
+    });
+
+    expect(context.templateId).toBe("editorial-guide");
+  });
   it("parses an index and an entry through the page union", () => {
     const index = themePageContextSchema.parse({
       ...collectionContextBase(),
