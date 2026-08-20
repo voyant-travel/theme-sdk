@@ -652,6 +652,8 @@ export const collectionIndexContextSchema = z.looseObject({
   kind: z.literal("collectionIndex"),
   path: z.string().startsWith("/"),
   title: z.string().min(1),
+  /** Resolved by the platform from the installed Theme's declarations. */
+  templateId: identifier.optional(),
   collection: collectionIdentitySchema,
   /** Declaration order, which is the order the operator arranged them in. */
   entries: z.array(collectionEntrySchema).default([]),
@@ -662,6 +664,8 @@ export const collectionEntryContextSchema = z.looseObject({
   kind: z.literal("collectionEntry"),
   path: z.string().startsWith("/"),
   title: z.string().min(1),
+  /** Lets one Content type select an alternate item-page shell. */
+  templateId: identifier.optional(),
   collection: collectionIdentitySchema,
   entry: collectionEntrySchema,
 });
