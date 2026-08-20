@@ -229,6 +229,41 @@ describe("published context fields", () => {
     expect(parsed.codeInjection).toEqual({ head, bodyEnd: "<!-- end -->" });
   });
 
+  it("carries visual-builder sections on an ordinary content page", () => {
+    const parsed = contentContextSchema.parse({
+      ...homeContext(),
+      kind: "content",
+      path: "/campaign",
+      slug: "campaign",
+      body: "",
+      sections: [
+        {
+          type: "hero",
+          data: { settings: { heading: "Summer escapes" }, blocks: [] },
+        },
+      ],
+    });
+
+    expect(parsed.sections).toEqual([
+      {
+        type: "hero",
+        data: { settings: { heading: "Summer escapes" }, blocks: [] },
+      },
+    ]);
+  });
+
+  it("defaults legacy prose-only content pages to no sections", () => {
+    const parsed = contentContextSchema.parse({
+      ...homeContext(),
+      kind: "content",
+      path: "/about",
+      slug: "about",
+      body: "About us",
+    });
+
+    expect(parsed.sections).toEqual([]);
+  });
+
   it("treats openGraph as optional", () => {
     expect(homeContextSchema.parse(homeContext()).openGraph).toBeUndefined();
     expect(

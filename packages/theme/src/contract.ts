@@ -542,19 +542,21 @@ const contextBase = {
     .default([]),
 };
 
+const renderedSectionsSchema = z
+  .array(
+    z.looseObject({
+      type: identifier,
+      data: z.record(z.string(), z.unknown()),
+    }),
+  )
+  .default([]);
+
 export const homeContextSchema = z.looseObject({
   ...contextBase,
   kind: z.literal("home"),
   path: z.literal("/"),
   title: z.string().min(1),
-  sections: z
-    .array(
-      z.looseObject({
-        type: identifier,
-        data: z.record(z.string(), z.unknown()),
-      }),
-    )
-    .default([]),
+  sections: renderedSectionsSchema,
 });
 
 export const contentContextSchema = z.looseObject({
@@ -565,6 +567,8 @@ export const contentContextSchema = z.looseObject({
   title: z.string().min(1),
   summary: z.string().optional(),
   body: z.string(),
+  /** Theme-authored page composition, empty for legacy prose-only pages. */
+  sections: renderedSectionsSchema,
 });
 
 export const notFoundContextSchema = z.looseObject({
