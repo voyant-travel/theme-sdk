@@ -43,7 +43,7 @@ import { createManagedContentClient } from "@voyant-travel/content-client";
 import { contentFetch } from "virtual:voyant-theme";
 
 const content = createManagedContentClient({ fetch: contentFetch });
-const articles = await content.queryDocuments({ schemaId: "articles" });
+const articles = await content.queryItems({ collectionId: "articles" });
 ---
 ```
 
