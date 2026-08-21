@@ -79,16 +79,16 @@ function publishedContext(path = "/stories/north") {
 describe("managed Content transport", () => {
   it("forwards only current scoped Content reads through PUBLICATION", async () => {
     const fetch = vi.fn(async (_request: RequestInfo | URL) =>
-      Response.json({ data: { schemas: [] } }),
+      Response.json({ data: { collections: [] } }),
     );
     const contentFetch = createThemeContentFetch(bindings(fetch));
     const response = await contentFetch(
-      "https://content.voyant.invalid/__voyant/content/schemas/article/documents?limit=20",
+      "https://content.voyant.invalid/__voyant/content/collections/article/items?limit=20",
     );
     expect(response.status).toBe(200);
     const request = fetch.mock.calls[0]?.[0] as Request;
     expect(request.url).toBe(
-      "https://content.voyant.invalid/__voyant/content/schemas/article/documents?limit=20",
+      "https://content.voyant.invalid/__voyant/content/collections/article/items?limit=20",
     );
     expect(request.headers.get("authorization")).toBe("Bearer scoped-token");
   });
@@ -107,14 +107,14 @@ describe("managed Content transport", () => {
     const contentFetch = createThemeContentFetch(runtimeEnv);
 
     await contentFetch(
-      "https://content.voyant.invalid/__voyant/content/schemas/article/documents",
+      "https://content.voyant.invalid/__voyant/content/collections/article/items",
     );
     current = {
       ...bindings(secondFetch),
       VOYANT_PUBLICATION_TOKEN: "second-scoped-token",
     };
     await contentFetch(
-      "https://content.voyant.invalid/__voyant/content/schemas/article/documents",
+      "https://content.voyant.invalid/__voyant/content/collections/article/items",
     );
 
     expect(firstFetch).toHaveBeenCalledOnce();
@@ -129,12 +129,15 @@ describe("managed Content transport", () => {
     const fetch = vi.fn();
     const contentFetch = createThemeContentFetch(bindings(fetch));
     await expect(
-      contentFetch("https://example.com/__voyant/content/schemas"),
+      contentFetch("https://example.com/__voyant/content/collections"),
     ).rejects.toMatchObject({ code: "THEME_RUNTIME_BINDINGS_INVALID" });
     await expect(
-      contentFetch("https://content.voyant.invalid/__voyant/content/schemas", {
-        method: "POST",
-      }),
+      contentFetch(
+        "https://content.voyant.invalid/__voyant/content/collections",
+        {
+          method: "POST",
+        },
+      ),
     ).rejects.toMatchObject({ code: "THEME_RUNTIME_BINDINGS_INVALID" });
     expect(fetch).not.toHaveBeenCalled();
   });
