@@ -1,5 +1,14 @@
 # @voyant-travel/theme
 
+## 1.8.0
+
+### Minor Changes
+
+- 4f965da: Allow ordinary content page contexts to carry Theme-authored sections so agencies can compose landing pages without a developer.
+- d89ac3d: Expose the platform-resolved Theme Template on collection index and item page contexts.
+- 4d929b2: Allow a tour detail renderer to preserve an operator-owned category namespace
+  with `/[category]/[slug]`, while retaining `/tours/[slug]` as the simple form.
+
 ## 1.7.0
 
 ### Minor Changes
