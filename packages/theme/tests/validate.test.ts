@@ -293,16 +293,43 @@ describe("checkThemeDefinition", () => {
         pattern: "/tours/[tour]",
         context: "tourDetail",
       },
-      code: "THEME_TOUR_ROUTE_NON_CANONICAL",
+      code: "THEME_TOUR_DETAIL_ROUTE_PARAMETERS_INVALID",
     },
-  ] as const)("rejects a non-canonical $route.context route", ({
-    route,
-    code,
-  }) => {
+  ] as const)("rejects an invalid $route.context route", ({ route, code }) => {
     const theme = validTheme();
     theme.manifest.routes.push(route);
     expect(checkThemeDefinition(theme).diagnostics).toContainEqual(
       expect.objectContaining({ code }),
+    );
+  });
+
+  it("accepts a category-qualified tour detail route", () => {
+    const theme = validTheme();
+    theme.manifest.routes.push(
+      { id: "tours", pattern: "/tours", context: "tourIndex" },
+      {
+        id: "tour-detail",
+        pattern: "/[category]/[slug]",
+        context: "tourDetail",
+      },
+    );
+    expect(checkThemeDefinition(theme).diagnostics).toEqual([]);
+  });
+
+  it.each([
+    "/[slug]/[slug]",
+    "/[category]/[other]/[slug]",
+    "/tours",
+  ])("rejects an unresolved tour detail pattern %s", (pattern) => {
+    const theme = validTheme();
+    theme.manifest.routes.push(
+      { id: "tours", pattern: "/tours", context: "tourIndex" },
+      { id: "tour-detail", pattern, context: "tourDetail" },
+    );
+    expect(checkThemeDefinition(theme).diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: "THEME_TOUR_DETAIL_ROUTE_PARAMETERS_INVALID",
+      }),
     );
   });
 

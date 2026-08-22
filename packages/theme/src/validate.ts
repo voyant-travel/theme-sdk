@@ -265,7 +265,6 @@ export function checkThemeDefinition(
     >
   > = {
     tourIndex: "/tours",
-    tourDetail: "/tours/[slug]",
     cruiseIndex: "/cruises",
     cruiseDetail: "/cruises/[slug]",
     shipDetail: "/ships/[slug]",
@@ -321,6 +320,32 @@ export function checkThemeDefinition(
           path: ["manifest", "routes", index, "pattern"],
         },
       });
+    }
+
+    if (route.context === "tourDetail") {
+      const parameters = [...route.pattern.matchAll(/\[([^\]]+)\]/g)].map(
+        (match) => match[1],
+      );
+      if (
+        parameters.filter((parameter) => parameter === "slug").length !== 1 ||
+        parameters.some(
+          (parameter) => parameter !== "slug" && parameter !== "category",
+        ) ||
+        parameters.filter((parameter) => parameter === "category").length > 1
+      ) {
+        diagnostics.push({
+          code: "THEME_TOUR_DETAIL_ROUTE_PARAMETERS_INVALID",
+          message:
+            "tourDetail must contain exactly [slug] and may contain one [category] parameter.",
+          severity: "error",
+          path: `$.manifest.routes[${index}].pattern`,
+          hint: "Use /tours/[slug] or /[category]/[slug].",
+          source: {
+            file: sourceFile,
+            path: ["manifest", "routes", index, "pattern"],
+          },
+        });
+      }
     }
   });
 
