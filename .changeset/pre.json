@@ -1,0 +1,13 @@
+{
+  "mode": "pre",
+  "tag": "canary",
+  "initialVersions": {
+    "@voyant-travel/example-theme": "0.0.10",
+    "@voyant-travel/astro": "1.7.0",
+    "@voyant-travel/theme": "1.7.0"
+  },
+  "changesets": [
+    "bright-pages-compose",
+    "calm-guides-template"
+  ]
+}

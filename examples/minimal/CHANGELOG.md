@@ -1,5 +1,14 @@
 # @voyant-travel/example-theme
 
+## 0.0.11-canary.0
+
+### Patch Changes
+
+- Updated dependencies [4f965da]
+- Updated dependencies [d89ac3d]
+  - @voyant-travel/theme@1.8.0-canary.0
+  - @voyant-travel/astro@1.8.0-canary.0
+
 ## 0.0.10
 
 ### Patch Changes
