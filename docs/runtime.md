@@ -134,6 +134,57 @@ for cache policy. Draft and private preview responses must be
 `Cache-Control: private, no-store`; public immutable publication reads can use
 the platform's publication-aware edge caching and invalidation policy.
 
+## Sitemap
+
+A theme owns its own URL inventory. The platform materializes page contexts, not
+a list of a site's addresses, so only the theme knows what it routes and only it
+can enumerate them. `createSitemap` turns that enumeration into a request
+handler:
+
+```ts
+// src/pages/sitemap.xml.ts
+import { createSitemap } from "@voyant-travel/theme/sitemap";
+
+export const GET = createSitemap({
+  locales: ["ro", "en"],
+  defaultLocale: "ro",
+  entries: async ({ locale }) => [
+    { id: "home", path: locale === "ro" ? "/" : "/en", changefreq: "weekly" },
+    ...(await tours(locale)).map((tour) => ({
+      id: `tour:${tour.id}`,
+      path: `/${locale === "ro" ? "tururi" : "en/tours"}/${tour.slug}`,
+      lastmod: tour.updatedAt,
+    })),
+  ],
+});
+```
+
+It is a handler rather than a build step because the catalog moves independently
+of releases: a file written at build time is stale as soon as a tour is added,
+renamed or retired.
+
+Entries are grouped by `id` across locales, never by path — the paths are the
+part that differs, and `/pelerinaje` and `/pilgrimages` are one page with two
+addresses. Each group emits one `<url>` per locale carrying an `xhtml:link`
+alternate for every locale in the group plus `x-default` on the default locale's
+path. hreflang is only honored when a cluster is complete and reciprocal, so a
+group whose locale set is incomplete is reported through `onIncompleteLocaleSet`
+and, by default, omitted. `incompleteLocaleSet: "emitWithoutAlternates"`
+publishes the addresses it has with no alternates at all instead. Neither policy
+emits a partial cluster.
+
+`<loc>` is absolutized against the origin the request arrived on, because one
+release is served from a preview host, a platform host and a custom domain, and
+a sitemap naming the wrong one advertises URLs the visitor cannot reach. Above
+`SITEMAP_URL_LIMIT` (50,000) or `SITEMAP_BYTE_LIMIT` (50MiB) the handler serves
+a `sitemapindex` and the shards move to a page-suffixed route, so mount the same
+handler at `src/pages/sitemap-[page].xml.ts` as well.
+
+Responses default to `Cache-Control: public, max-age=300,
+stale-while-revalidate=60`, matching what the platform serves for this document
+today. A theme rendering a draft or private preview lane must override it with
+`cacheControl: "private, no-store"`, as it must for every other response.
+
 ## Build metadata
 
 The integration emits this runtime descriptor, which tooling includes in the
