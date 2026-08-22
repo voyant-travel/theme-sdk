@@ -1,5 +1,18 @@
 # @voyant-travel/astro
 
+## 1.8.0
+
+### Minor Changes
+
+- 7cee28a: Expose the server-only managed Content Fetch transport for Site-scoped current-generation reads.
+
+### Patch Changes
+
+- Updated dependencies [4f965da]
+- Updated dependencies [d89ac3d]
+- Updated dependencies [4d929b2]
+  - @voyant-travel/theme@1.8.0
+
 ## 1.7.0
 
 ### Minor Changes
