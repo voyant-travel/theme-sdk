@@ -1,5 +1,14 @@
 # @voyant-travel/astro
 
+## 1.8.1
+
+### Patch Changes
+
+- fb6c2ff: Accept structured, multi-reference, and resource-reference collection field
+  metadata in published collection contexts.
+- Updated dependencies [fb6c2ff]
+  - @voyant-travel/theme@1.8.1
+
 ## 1.8.0
 
 ### Minor Changes
