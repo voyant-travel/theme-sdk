@@ -631,6 +631,10 @@ export const collectionFieldSchema = z.looseObject({
     "image",
     "select",
     "reference",
+    "multiReference",
+    "resourceReference",
+    "object",
+    "array",
   ]),
 });
 
