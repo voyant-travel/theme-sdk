@@ -405,6 +405,37 @@ describe("collection contexts", () => {
     ]);
   });
 
+  it("accepts every structured Content field type published by the platform", () => {
+    const index = collectionIndexContextSchema.parse({
+      ...collectionContextBase(),
+      kind: "collectionIndex",
+      path: "/destinations",
+      title: "Destinations",
+      collection: {
+        id: "destinations",
+        name: "Destinations",
+        fields: [
+          { id: "regions", label: "Regions", type: "multiReference" },
+          {
+            id: "product",
+            label: "Product",
+            type: "resourceReference",
+          },
+          { id: "coordinates", label: "Coordinates", type: "object" },
+          { id: "highlights", label: "Highlights", type: "array" },
+        ],
+      },
+      entries: [collectionEntry()],
+    });
+
+    expect(index.collection.fields?.map((field) => field.type)).toEqual([
+      "multiReference",
+      "resourceReference",
+      "object",
+      "array",
+    ]);
+  });
+
   it("reads a publication that predates field definitions", () => {
     const index = collectionIndexContextSchema.parse({
       ...collectionContextBase(),
