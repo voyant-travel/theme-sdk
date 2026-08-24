@@ -885,7 +885,13 @@ export const tourDetailContextSchema = z
   .looseObject({
     ...contextBase,
     kind: z.literal("tourDetail"),
-    path: z.string().regex(/^\/tours\/[^/]+$/),
+    // The Theme route validator permits either the simple `/tours/[slug]`
+    // form or an operator-owned `/<category>/[slug]` namespace. The published
+    // context cannot carry the Theme manifest along with every response, so
+    // validate the shared invariant here: exactly two safe, non-empty path
+    // segments. The publication materializer remains responsible for matching
+    // those segments to the route the installed Theme actually declared.
+    path: z.string().regex(/^\/[^/]+\/[^/]+$/),
     slug: z.string().min(1),
     title: z.string().min(1),
     product: catalogProductSchema,
