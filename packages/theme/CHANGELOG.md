@@ -1,5 +1,11 @@
 # @voyant-travel/theme
 
+## 1.9.0
+
+### Minor Changes
+
+- ae84a0c: Add the managed, abuse-protected newsletter subscription capability for Themes.
+
 ## 1.8.2
 
 ### Patch Changes
