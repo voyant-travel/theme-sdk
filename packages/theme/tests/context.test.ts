@@ -512,6 +512,39 @@ describe("tour contexts", () => {
     expect(detail.kind).toBe("tourDetail");
   });
 
+  it("parses a tour detail at an operator-owned category address", () => {
+    const detail = themePageContextSchema.parse({
+      ...tourContextBase(),
+      kind: "tourDetail",
+      path: "/pilgrimages/holy-land",
+      slug: "holy-land",
+      title: "Holy Land",
+      product: catalogProduct(),
+    });
+
+    expect(detail).toMatchObject({
+      kind: "tourDetail",
+      path: "/pilgrimages/holy-land",
+      slug: "holy-land",
+    });
+  });
+
+  it.each([
+    "/holy-land",
+    "/pilgrimages/holy-land/day-one",
+  ])("rejects a tour detail path that is not exactly two segments: %s", (path) => {
+    expect(
+      tourDetailContextSchema.safeParse({
+        ...tourContextBase(),
+        kind: "tourDetail",
+        path,
+        slug: "holy-land",
+        title: "Holy Land",
+        product: catalogProduct(),
+      }).success,
+    ).toBe(false);
+  });
+
   it("keeps the immutable public catalog projection free of commercial snapshots", () => {
     for (const forbidden of [
       "price",
