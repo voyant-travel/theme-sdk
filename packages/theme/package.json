@@ -1,6 +1,6 @@
 {
   "name": "@voyant-travel/theme",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "description": "The public contract and local tooling for Astro Themes for Voyant Sites.",
   "license": "Apache-2.0",
   "repository": {
