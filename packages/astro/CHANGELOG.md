@@ -1,5 +1,11 @@
 # @voyant-travel/astro
 
+## 1.9.1
+
+### Patch Changes
+
+- 3880a20: Refresh managed page contexts on every request so publishing Site content is visible without republishing the Theme.
+
 ## 1.8.1
 
 ### Patch Changes
