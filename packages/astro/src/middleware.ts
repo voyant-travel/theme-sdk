@@ -7,9 +7,7 @@ import { injectThemeCode, isInjectableDocument } from "./injection.js";
 /**
  * Splices operator code injection into every document the theme renders.
  *
- * This runs after the page, not before it, for two reasons. The rendered HTML
- * is what gets spliced, and by then the page has already resolved its context,
- * so the resolver's memo answers this lookup without a second fetch.
+ * This runs after the page because the rendered HTML is what gets spliced.
  *
  * Injection never fails a page. An operator's analytics tag is not worth a
  * blank Site, so a context that cannot be resolved here leaves the
