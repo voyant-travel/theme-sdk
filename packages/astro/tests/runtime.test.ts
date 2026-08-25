@@ -630,21 +630,28 @@ describe("createThemeContextResolver", () => {
     );
   });
 
-  it("fetches one context when the same page is resolved twice", async () => {
-    // The page resolves its own context and the injection middleware resolves
-    // it again after rendering. That must cost one fetch, not two.
-    const fetch = vi.fn(async () => publishedResponse());
+  it("refreshes current Content when the same page is resolved again", async () => {
+    const first = publishedContext();
+    const second = publishedContext();
+    second.context.title = "Updated story";
+    const fetch = vi
+      .fn<VoyantPublicationBindings["PUBLICATION"]["fetch"]>()
+      .mockResolvedValueOnce(publishedResponse(first))
+      .mockResolvedValueOnce(publishedResponse(second));
     const resolve = createThemeContextResolver(theme);
     const env = bindings(fetch);
 
-    await resolve("https://north.example/stories/north", env);
-    await resolve("https://north.example/stories/north", env);
+    await expect(
+      resolve("https://north.example/stories/north", env),
+    ).resolves.toMatchObject({ title: "Published story" });
+    await expect(
+      resolve("https://north.example/stories/north", env),
+    ).resolves.toMatchObject({ title: "Updated story" });
 
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("resolves a different publication separately", async () => {
-    // A publication is immutable, so its id is what makes an entry reusable.
     // A new publication must never be answered from the previous one.
     const fetch = vi.fn(async () => publishedResponse());
     const resolve = createThemeContextResolver(theme);
@@ -659,9 +666,7 @@ describe("createThemeContextResolver", () => {
   });
 
   it("lets concurrent resolutions of the same page each fetch", async () => {
-    // The cost of never caching a promise. Only the settled context is stored,
-    // so two resolutions that overlap both fetch, and neither can end up
-    // awaiting a promise that belongs to another request.
+    // Each resolution owns its own request-scoped fetch.
     const fetch = vi.fn(async () => publishedResponse());
     const resolve = createThemeContextResolver(theme);
     const env = bindings(fetch);
