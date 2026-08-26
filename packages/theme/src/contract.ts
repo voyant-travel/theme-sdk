@@ -271,10 +271,8 @@ export const themeTemplateSchema = z.strictObject({
  * an endpoint off `context.live.capabilities` and never hardcodes a path.
  *
  * Everything here is a read except the pricing, quote, shopping, booking,
- * checkout and newsletter operations that carry their own platform abuse
- * controls. Other public writes — including general lead capture — and
- * anything returning customer data remain absent until they have the same
- * privacy and abuse-control review.
+ * checkout, newsletter and inquiry operations that carry their own platform
+ * abuse controls. Anything returning customer data remains absent.
  */
 export const THEME_CAPABILITY_IDS = [
   "catalog.search.v1",
@@ -305,6 +303,7 @@ export const THEME_CAPABILITY_IDS = [
   "booking.session.v1",
   "checkout.v1",
   "newsletter.subscribe.v1",
+  "inquiry.submit.v1",
 ] as const;
 
 export const themeCapabilityIdSchema = z.enum(THEME_CAPABILITY_IDS);
@@ -344,6 +343,7 @@ export const THEME_CAPABILITY_METHODS = {
   "booking.session.v1": ["POST", "PATCH"],
   "checkout.v1": ["POST"],
   "newsletter.subscribe.v1": ["GET", "POST"],
+  "inquiry.submit.v1": ["POST"],
 } as const satisfies Record<
   (typeof THEME_CAPABILITY_IDS)[number],
   readonly ("GET" | "POST" | "PATCH")[]
