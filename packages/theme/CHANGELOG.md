@@ -1,5 +1,11 @@
 # @voyant-travel/theme
 
+## 1.10.0
+
+### Minor Changes
+
+- d91940f: Add the managed `inquiry.submit.v1` capability for secure website inquiry forms.
+
 ## 1.9.0
 
 ### Minor Changes
