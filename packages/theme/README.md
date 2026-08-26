@@ -46,6 +46,12 @@ booking-engine choice, payments, and FX stay server-owned.
 to an opaque selection reference, its expected revision, and an idempotency
 key; its managed Booking Session continues through `booking.session.v1`.
 
+`createSitemap` builds the `/sitemap.xml` handler a theme mounts once it owns
+its own URL inventory. It groups entries by a stable `id` across locales — not
+by path, since the paths are what differ — and emits reciprocal `xhtml:link`
+alternates plus `x-default`, absolutized against the origin the request arrived
+on. See [the runtime contract](../../docs/runtime.md#sitemap).
+
 Themes declare alternate context-compatible renderers in `manifest.templates`.
 The platform validates and resolves its vertical, resource-type, taxonomy, and
 individual-resource assignments with `checkThemeTemplateAssignments` and
