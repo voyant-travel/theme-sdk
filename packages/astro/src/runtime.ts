@@ -11,6 +11,13 @@ import {
   themeContextResponseSchema,
   upgradeThemeContextResponse,
 } from "@voyant-travel/theme";
+import {
+  parseThemeConsentConfiguration,
+  THEME_CONSENT_CONFIG_PATH,
+  THEME_CONSENT_PATH,
+  THEME_CONSENT_PROOF_PATH,
+  type ThemeConsentConfiguration,
+} from "./consent.js";
 
 export const PUBLICATION_BINDING_NAMES = [
   "PUBLICATION",
@@ -45,6 +52,8 @@ const MAX_CONTEXT_RESPONSE_BYTES = 2 * 1024 * 1024;
 export const CONNECTED_CONTEXT_TIMEOUT_MS = 10_000;
 export const CONNECTED_PUBLIC_API_PATH = "/v1/public" as const;
 export const MANAGED_CONTENT_ORIGIN = "https://content.voyant.invalid" as const;
+
+const PLATFORM_API_URL_BINDING = "VOYANT_PLATFORM_API_URL" as const;
 
 /** The HTTP subset of a Cloudflare `Fetcher` used by the theme runtime. */
 export interface PublicationFetcher {
@@ -202,6 +211,115 @@ export class ThemeRuntimeError extends Error {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object";
+}
+
+function platformApiUrl(runtimeEnv: unknown): URL | null {
+  if (!isRecord(runtimeEnv)) return null;
+  const value = runtimeEnv[PLATFORM_API_URL_BINDING];
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:") return null;
+    url.pathname = url.pathname.replace(/\/+$/, "");
+    url.search = "";
+    url.hash = "";
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+function themeConsentTarget(base: URL, path: string, hostname: string) {
+  const target = new URL(base);
+  target.pathname = `${target.pathname}${path}`;
+  target.searchParams.set("hostname", hostname);
+  return target;
+}
+
+export async function resolveThemeConsentConfiguration(
+  request: Request,
+  runtimeEnv?: unknown,
+  fetchImpl: typeof fetch = globalThis.fetch,
+): Promise<ThemeConsentConfiguration | null> {
+  if (request.method !== "GET" && request.method !== "HEAD") return null;
+  const bindings = readPublicationBindings(runtimeEnv);
+  const api = platformApiUrl(runtimeEnv);
+  if (!bindings || !api) return null;
+  const hostname = new URL(request.url).hostname.toLowerCase();
+  try {
+    const response = await fetchImpl(
+      new Request(
+        themeConsentTarget(api, THEME_CONSENT_CONFIG_PATH, hostname),
+        {
+          headers: {
+            accept: "application/json",
+            authorization: `Bearer ${bindings.VOYANT_PUBLICATION_TOKEN}`,
+          },
+          method: "GET",
+        },
+      ),
+    );
+    if (!response.ok) return null;
+    return parseThemeConsentConfiguration(await response.json(), hostname);
+  } catch {
+    // Consent configuration failure is fail-closed: no optional destination is
+    // injected and the rendered page remains usable.
+    return null;
+  }
+}
+
+export async function resolveThemeConsentProofRoute(
+  request: Request,
+  runtimeEnv?: unknown,
+  fetchImpl: typeof fetch = globalThis.fetch,
+): Promise<Response | undefined> {
+  const requestUrl = new URL(request.url);
+  if (requestUrl.pathname !== THEME_CONSENT_PATH) return undefined;
+  if (request.method !== "POST")
+    return new Response(null, { status: 405, headers: { allow: "POST" } });
+  const origin = request.headers.get("origin");
+  if (origin && origin !== requestUrl.origin)
+    return new Response(null, { status: 403 });
+  if (
+    request.headers.get("x-voyant-consent") !== "1" ||
+    !request.headers.get("content-type")?.startsWith("application/json")
+  )
+    return new Response(null, { status: 415 });
+  const bindings = readPublicationBindings(runtimeEnv);
+  const api = platformApiUrl(runtimeEnv);
+  if (!bindings || !api) return new Response(null, { status: 503 });
+  try {
+    const init: RequestInit & { duplex?: "half" } = {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${bindings.VOYANT_PUBLICATION_TOKEN}`,
+        "content-type": "application/json",
+        "x-voyant-consent": "1",
+      },
+      body: request.body,
+      redirect: "manual",
+      duplex: "half",
+    };
+    const response = await fetchImpl(
+      new Request(
+        themeConsentTarget(
+          api,
+          THEME_CONSENT_PROOF_PATH,
+          requestUrl.hostname.toLowerCase(),
+        ),
+        init,
+      ),
+    );
+    return new Response(null, {
+      status: response.ok ? 204 : response.status,
+      headers: { "cache-control": "no-store" },
+    });
+  } catch {
+    return new Response(null, {
+      status: 503,
+      headers: { "cache-control": "no-store" },
+    });
+  }
 }
 
 function isPublicationFetcher(value: unknown): value is PublicationFetcher {

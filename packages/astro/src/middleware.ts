@@ -1,6 +1,10 @@
-import { resolveThemeContext } from "virtual:voyant-theme";
+import {
+  resolveThemeConsentConfiguration,
+  resolveThemeContext,
+} from "virtual:voyant-theme";
 import { getThemeEditorContext } from "@voyant-travel/theme";
 
+import { injectConsentBootstrap } from "./consent.js";
 import { injectThemeEditorBridge } from "./editor-bridge.js";
 import { injectThemeCode, isInjectableDocument } from "./injection.js";
 
@@ -27,12 +31,18 @@ export async function onRequest(
   } catch {
     return response;
   }
-  const editor = getThemeEditorContext(pageContext);
-  if (!pageContext.codeInjection && !editor) return response;
+  const [consent, editor] = await Promise.all([
+    resolveThemeConsentConfiguration(context.request),
+    Promise.resolve(getThemeEditorContext(pageContext)),
+  ]);
+  if (!pageContext.codeInjection && !editor && !consent) return response;
 
   const html = await response.text();
   const injected = injectThemeEditorBridge(
-    injectThemeCode(html, pageContext.codeInjection),
+    injectConsentBootstrap(
+      injectThemeCode(html, pageContext.codeInjection),
+      consent,
+    ),
     editor,
   );
   if (injected === html) return new Response(html, response);
