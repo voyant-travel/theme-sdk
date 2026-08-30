@@ -1,5 +1,13 @@
 # @voyant-travel/astro
 
+## 1.11.0
+
+### Minor Changes
+
+- 6a50b8a: Add managed Voyant consent to deployed custom themes, including early Google
+  Consent Mode defaults, GTM consent events, and proof forwarding through the
+  site's signed publication capability.
+
 ## 1.9.1
 
 ### Patch Changes
