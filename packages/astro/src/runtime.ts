@@ -53,7 +53,7 @@ export const CONNECTED_CONTEXT_TIMEOUT_MS = 10_000;
 export const CONNECTED_PUBLIC_API_PATH = "/v1/public" as const;
 export const MANAGED_CONTENT_ORIGIN = "https://content.voyant.invalid" as const;
 
-const PLATFORM_API_URL_BINDING = "VOYANT_PLATFORM_API_URL" as const;
+export const PLATFORM_API_URL_BINDING = "VOYANT_PLATFORM_API_URL" as const;
 
 /** The HTTP subset of a Cloudflare `Fetcher` used by the theme runtime. */
 export interface PublicationFetcher {
