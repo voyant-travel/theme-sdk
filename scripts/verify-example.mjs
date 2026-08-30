@@ -62,6 +62,7 @@ assert.deepEqual(metadata.runtime, {
     "VOYANT_SITE_ID",
     "VOYANT_PUBLICATION_ID",
     "VOYANT_THEME_RELEASE_ID",
+    "VOYANT_PLATFORM_API_URL",
   ],
 });
 assert.match(metadata.digest, /^[a-f0-9]{64}$/);
