@@ -1,5 +1,11 @@
 # @voyant-travel/astro
 
+## 1.11.1
+
+### Patch Changes
+
+- 7269733: Declare the managed platform API URL in Cloudflare theme runtime metadata so consent configuration and proof proxy support cannot be deployed without its required binding.
+
 ## 1.11.0
 
 ### Minor Changes
