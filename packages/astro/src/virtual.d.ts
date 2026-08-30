@@ -11,6 +11,12 @@ declare module "virtual:voyant-theme" {
   export function resolveThemePublicApiRoute(
     request: Request,
   ): Promise<Response | undefined>;
+  export function resolveThemeConsentConfiguration(
+    request: Request,
+  ): Promise<import("./consent.js").ThemeConsentConfiguration | null>;
+  export function resolveThemeConsentProofRoute(
+    request: Request,
+  ): Promise<Response | undefined>;
   export function resolvePublicationSystemRoute(
     request: Request,
   ): Promise<Response | undefined>;

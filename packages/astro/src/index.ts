@@ -35,6 +35,12 @@ export interface VirtualVoyantThemeModule {
     input: string | URL,
   ): Promise<import("@voyant-travel/theme").ThemePageContext>;
   resolveThemePublicApiRoute(request: Request): Promise<Response | undefined>;
+  resolveThemeConsentConfiguration(
+    request: Request,
+  ): Promise<import("./consent.js").ThemeConsentConfiguration | null>;
+  resolveThemeConsentProofRoute(
+    request: Request,
+  ): Promise<Response | undefined>;
   contentFetch: import("./runtime.js").ThemeContentFetch;
 }
 
@@ -115,7 +121,7 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
                         )
                       : "undefined";
                   return [
-                    'import { createThemeContentFetch, createThemeContextResolver, resolveThemePublicApiRoute as resolvePublicApiRoute } from "@voyant-travel/astro/runtime";',
+                    'import { createThemeContentFetch, createThemeContextResolver, resolveThemeConsentConfiguration as resolveConsentConfiguration, resolveThemeConsentProofRoute as resolveConsentProofRoute, resolveThemePublicApiRoute as resolvePublicApiRoute } from "@voyant-travel/astro/runtime";',
                     'import { resolvePublicationSystemRoute as resolveSystemRoute } from "@voyant-travel/astro/runtime";',
                     'import { env } from "cloudflare:workers";',
                     `export const theme = ${serialized};`,
@@ -124,6 +130,8 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
                     `const privateEnvironment = ${privateEnvironment};`,
                     "export const resolveThemeContext = (input) => resolveContext(input, env, privateEnvironment);",
                     "export const resolveThemePublicApiRoute = (request) => resolvePublicApiRoute(request, privateEnvironment);",
+                    "export const resolveThemeConsentConfiguration = (request) => resolveConsentConfiguration(request, env);",
+                    "export const resolveThemeConsentProofRoute = (request) => resolveConsentProofRoute(request, env);",
                     "export const contentFetch = createThemeContentFetch(env);",
                     "export const resolvePublicationSystemRoute = (request) => resolveSystemRoute(request, env);",
                   ].join("\n");
@@ -148,12 +156,18 @@ export function voyantTheme(options: VoyantThemeOptions): AstroIntegration {
   };
 }
 
+export {
+  injectConsentBootstrap,
+  parseThemeConsentConfiguration,
+  renderConsentBootstrap,
+  THEME_CONSENT_PATH,
+  type ThemeConsentConfiguration,
+} from "./consent.js";
 export { CLOUDFLARE_THEME_RUNTIME } from "./deployment.js";
 export {
   injectThemeEditorBridge,
   themeEditorBridgeScript,
 } from "./editor-bridge.js";
-
 export {
   CONNECTED_CONTEXT_TIMEOUT_MS,
   CONNECTED_PUBLIC_API_PATH,
@@ -167,6 +181,8 @@ export {
   readPublicationBindings,
   readThemeDevelopmentRuntime,
   resolvePublicationSystemRoute,
+  resolveThemeConsentConfiguration,
+  resolveThemeConsentProofRoute,
   resolveThemePublicApiRoute,
   THEME_DEVELOPMENT_RUNTIME_ADAPTER_ID,
   THEME_DEVELOPMENT_RUNTIME_ENV_NAMES,

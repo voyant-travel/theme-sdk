@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const resolvePublicationSystemRoute = vi.fn();
+const resolveThemeConsentProofRoute = vi.fn();
 const resolveThemePublicApiRoute = vi.fn();
 
 vi.mock("virtual:voyant-theme", () => ({
   resolvePublicationSystemRoute,
+  resolveThemeConsentProofRoute,
   resolveThemePublicApiRoute,
 }));
 
@@ -13,7 +15,23 @@ const { onRequest } = await import("../src/system-middleware.js");
 describe("theme system middleware", () => {
   beforeEach(() => {
     resolvePublicationSystemRoute.mockReset();
+    resolveThemeConsentProofRoute.mockReset();
     resolveThemePublicApiRoute.mockReset();
+    resolveThemeConsentProofRoute.mockResolvedValue(undefined);
+  });
+
+  it("serves consent proofs before theme routes", async () => {
+    const proof = new Response(null, { status: 204 });
+    resolveThemeConsentProofRoute.mockResolvedValue(proof);
+    const next = vi.fn();
+    const request = new Request("https://www.example.com/_voyant/consent", {
+      method: "POST",
+    });
+
+    await expect(onRequest({ request }, next)).resolves.toBe(proof);
+    expect(resolveThemePublicApiRoute).not.toHaveBeenCalled();
+    expect(resolvePublicationSystemRoute).not.toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
   });
 
   it("serves a connected Public API response before theme routes", async () => {

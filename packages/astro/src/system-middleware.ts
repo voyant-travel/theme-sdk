@@ -1,5 +1,6 @@
 import {
   resolvePublicationSystemRoute,
+  resolveThemeConsentProofRoute,
   resolveThemePublicApiRoute,
 } from "virtual:voyant-theme";
 
@@ -11,6 +12,8 @@ export async function onRequest(
   context: { request: Request },
   next: () => Promise<Response>,
 ): Promise<Response> {
+  const consentResponse = await resolveThemeConsentProofRoute(context.request);
+  if (consentResponse) return consentResponse;
   const publicApiResponse = await resolveThemePublicApiRoute(context.request);
   if (publicApiResponse) return publicApiResponse;
   const systemResponse = await resolvePublicationSystemRoute(context.request);
